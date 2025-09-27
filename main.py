@@ -1,3 +1,4 @@
+import random
 import sys
 import math
 import traceback
@@ -140,34 +141,16 @@ class FollowAndDragWidget(QWidget):
             )
             self.setAttribute(Qt.WA_TranslucentBackground)  # 透明背景
 
-            # 加载主图片
-            self.image_label = QLabel(self)
-            try:
-                pixmap = QPixmap("image.png")  # 主显示图片
-                if pixmap.isNull():
-                    raise FileNotFoundError("无法加载图片 image.png")
-                logger.info("主图片加载成功")
-            except Exception as e:
-                logger.error(f"图片加载错误: {traceback.format_exc()}")
-                # 创建默认图片
-                pixmap = QPixmap(100, 100)
-                pixmap.fill(Qt.red)
-                self.image_label.setText("图片加载失败,请检查image.png是否存在。使用默认图片")
 
-            # 转换为QImage以便检查像素
-            self.image = pixmap.toImage()
-
-
-            self.image_label.setPixmap(pixmap)
-            self.image_label.setAlignment(Qt.AlignCenter)
-
-            # 调整窗口大小为图片大小
-            self.resize(pixmap.size())
 
             # 鼠标交互相关变量
             self.dragging = False
             self.offset = QPoint()
             self.tray_menu = None  # 存储托盘菜单引用
+
+            # 加载主图片
+            self.init_image()
+
 
             # 初始位置：屏幕中央
             screen_geometry = QApplication.desktop().screenGeometry()
@@ -187,13 +170,124 @@ class FollowAndDragWidget(QWidget):
             logger.error(f"FollowAndDragWidget初始化错误: {traceback.format_exc()}")
             raise
 
+    def set_image(self,pixmap):
+        self.image = pixmap.toImage()
+
+        self.image_label.setPixmap(pixmap)
+
+        # 调整窗口大小为图片大小
+        self.resize(pixmap.size())
+
+    def init_image(self):
+        self.image_label = QLabel(self)
+
+
+        # 图片状态相关变量
+        self.current_image_state = "image1"  # 当前图片状态
+
+        self.change_image_timer=QTimer(self)
+        self.change_image_timer.timeout.connect(self.change_image)
+        self.change_image_timer.start(10000)  # 10秒切换一次图片状态,概率
+
+
+
+        self.image_series_timer = QTimer(self)  # 图片系列变化定时器
+        self.image_series_timer.timeout.connect(self.update_image_series)
+        self.image_series_index = 0  # 当前系列图片索引
+
+        self.image_series = ["2-1", "2-2", "2-3", "2-2"]  # 图片2系列循环顺序
+
+        # 加载所有图片资源
+        self.load_all_images()
+        self.change_to_image1()
+        self.image_label.setAlignment(Qt.AlignCenter)
+
+    def load_all_images(self):
+        """加载所有需要的图片资源"""
+        self.images = {
+            "image1": self.load_image("img/image.png"),
+            "2-1": self.load_image("img/image2-1.png"),
+            "2-2": self.load_image("img/image2-2.png"),
+            "2-3": self.load_image("img/image2-3.png")
+        }
+
+    def load_image(self, path):
+        """加载单个图片并处理异常"""
+        try:
+            pixmap = QPixmap(path)
+            if pixmap.isNull():
+                raise FileNotFoundError(f"无法加载图片 {path}")
+            return pixmap
+        except Exception as e:
+            logger.error(f"图片加载错误({path}): {traceback.format_exc()}")
+            # 创建默认红色图片
+            default_pixmap = QPixmap(100, 100)
+            default_pixmap.fill(Qt.red)
+            return default_pixmap
+
+    def change_image(self):
+        """切换图片状态"""
+
+        # 概率切换图片状态
+        if random.random() < 0.5 and not self.dragging:  # 50%概率切换
+
+            if self.current_image_state == "image1":
+                self.change_to_image_series()
+            elif self.current_image_state == "image2-series":
+                self.change_to_image1()
+
+    def change_to_image1(self):
+        """切换到图片1状态"""
+        self.current_image_state = "image1"
+
+        self.set_image(self.images["image1"])
+        # self.image_label.setPixmap(self.images["image1"])
+        self.image_series_timer.stop()
+        logger.info("切换到图片1")
+
+
+        if random.random() < 0.3:  # 30%概率切换到系列图片
+            self.change_to_image_series()
+
+    def change_to_image_series(self):
+        """切换到图片系列状态"""
+        self.current_image_state = "image2-series"
+        self.image_series_index = 0
+        self.update_series_image()
+        self.image_series_timer.start(200)  # 每100ms切换一次
+        logger.info("进入图片系列循环")
+
+    def update_series_image(self):
+        """更新系列图片显示"""
+        current_img = self.image_series[self.image_series_index]
+        self.set_image(self.images[current_img])
+        # self.image_label.setPixmap(self.images[current_img])
+
+        # # 检查是否在2-1状态且有概率跳出循环
+        # if current_img == "2-1" and random.random() < 0.2 and not self.dragging:  # 20%概率跳出
+        #     self.change_to_image1()
+        #     return
+
+        # 更新索引（循环）
+        self.image_series_index = (self.image_series_index + 1) % len(self.image_series)
+
+    def update_image_series(self):
+        """定时器触发的系列图片更新"""
+        try:
+            if self.current_image_state == "image2-series":
+                self.update_series_image()
+        except Exception as e:
+            logger.error(f"更新系列图片错误: {traceback.format_exc()}")
+
+
+
     def create_tray_icon(self):
         try:
             # 加载托盘图标
             try:
-                tray_icon = QPixmap("image.png")  # 任务栏图标
+                tray_icon = QPixmap("img/image.png")  # 任务栏图标
                 if tray_icon.isNull():
-                    raise FileNotFoundError("无法加载托盘图标 image2.png")
+                    raise FileNotFoundError("无法加载托盘图标 image.png")
                 logger.info("托盘图标加载成功")
             except Exception as e:
                 logger.error(f"托盘图标加载错误: {traceback.format_exc()}")
@@ -374,6 +468,10 @@ class FollowAndDragWidget(QWidget):
     def mousePressEvent(self, event):
         try:
             if event.button() == Qt.LeftButton and self.drag_enabled:
+
+                if self.current_image_state == "image1":
+                    self.change_to_image_series()
+
                 # 开始拖动
                 self.dragging = True
                 self.offset = event.pos()
@@ -392,6 +490,10 @@ class FollowAndDragWidget(QWidget):
     def mouseReleaseEvent(self, event):
         try:
             if event.button() == Qt.LeftButton and self.dragging:
+
+                if self.current_image_state == "image2-series":
+                    self.change_to_image1()
+
                 # 结束拖动
                 self.dragging = False
                 logger.info("用户结束拖动图片")

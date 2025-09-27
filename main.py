@@ -2,136 +2,33 @@ import random
 import sys
 import math
 import traceback
-import logging
 import datetime
-import os
 from PyQt5.QtWidgets import (QApplication, QLabel, QWidget, QSystemTrayIcon,
                              QMenu, QAction, QDialog, QVBoxLayout, QSlider,
-                             QCheckBox, QPushButton, QMessageBox)
+                             QCheckBox, QPushButton, QMessageBox, QHBoxLayout)
 from PyQt5.QtCore import Qt, QPoint, QTimer, QSize
 from PyQt5.QtGui import QPixmap, QIcon, QCursor
 
-
-def setup_logging():
-    """设置日志系统"""
-    # 创建logs目录
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-
-    # 生成日志文件名（带时间戳）
-    log_filename = f"logs/mouse_follower_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-
-    # 配置日志
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_filename, encoding='utf-8'),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    return logging.getLogger(__name__)
-
-
-logger = setup_logging()
-
-
-def handle_exception(exc_type, exc_value, exc_traceback):
-    """全局异常处理函数"""
-    error_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    logger.error(f"未捕获的异常:\n{error_msg}")
-
-    # 在GUI中显示错误信息
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Critical)
-    msg_box.setWindowTitle("程序错误")
-    msg_box.setText("程序发生错误，请查看日志")
-    msg_box.setDetailedText(error_msg)
-    msg_box.exec_()
-
-    # 正常退出程序
-    QApplication.quit()
-
-
-class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        try:
-            super().__init__(parent)
-            self.parent = parent
-            self.setWindowTitle("鼠标跟随工具 - 设置")
-            self.setWindowFlags(Qt.WindowStaysOnTopHint)
-            self.setFixedSize(300, 250)
-
-            layout = QVBoxLayout()
-
-            # 跟随开关
-            self.follow_check = QCheckBox("启用鼠标跟随", self)
-            self.follow_check.setChecked(parent.follow_enabled)
-            layout.addWidget(self.follow_check)
-
-            # 跟随速度滑块
-            self.speed_label = QLabel(f"跟随速度: {parent.follow_speed:.1f}", self)
-            layout.addWidget(self.speed_label)
-
-            self.speed_slider = QSlider(Qt.Horizontal, self)
-            self.speed_slider.setRange(1, 20)
-            self.speed_slider.setValue(int(parent.follow_speed * 10))
-            self.speed_slider.valueChanged.connect(self.update_speed_label)
-            layout.addWidget(self.speed_slider)
-
-            # 拖动开关
-            self.drag_check = QCheckBox("启用拖动功能", self)
-            self.drag_check.setChecked(parent.drag_enabled)
-            layout.addWidget(self.drag_check)
-
-            # 退出按钮
-            self.exit_btn = QPushButton("退出程序", self)
-            self.exit_btn.clicked.connect(self.exit_program)
-            layout.addWidget(self.exit_btn)
-
-            # 确定按钮
-            self.ok_btn = QPushButton("确定", self)
-            self.ok_btn.clicked.connect(self.accept)
-            layout.addWidget(self.ok_btn)
-
-            self.setLayout(layout)
-
-            # 连接信号
-            self.follow_check.stateChanged.connect(parent.toggle_follow)
-            self.drag_check.stateChanged.connect(parent.toggle_drag)
-            self.speed_slider.valueChanged.connect(
-                lambda v: setattr(parent, 'follow_speed', v / 10))
-
-            logger.info("设置窗口已创建")
-
-        except Exception as e:
-            logger.error(f"SettingsDialog初始化错误: {traceback.format_exc()}")
-            raise
-
-    def update_speed_label(self, value):
-        """更新速度显示标签"""
-        self.speed_label.setText(f"跟随速度: {value / 10:.1f}")
-
-    def exit_program(self):
-        """退出程序"""
-        logger.info("用户通过设置窗口退出程序")
-        self.parent.close()
+from configs import Config
+from modes import ModeManager
+from tray import create_tray
+from utils.log_util import logger
+from utils.exce_util import handle_exception
+from configs import Config, config
 
 
 class FollowAndDragWidget(QWidget):
     def __init__(self):
+        """
+        初始化跟随和拖动功能的主窗口
+        配置信息位于configs.py"""
         try:
             super().__init__()
 
-            # 初始化设置
-            self.follow_enabled = True
-            self.drag_enabled = True
-            self.follow_speed = 0.1
-
             # 跟随状态跟踪
-            self.follow_start_time = None
-            self.last_follow_time = None
-            self.is_following = False
+            self.follow_start_time = None  # 跟随开始时间
+            self.last_follow_time = None  # 上一次跟随时间
+            self.is_following = False  # 是否正在跟随鼠标
 
             # 设置窗口属性
             self.setWindowFlags(
@@ -141,28 +38,21 @@ class FollowAndDragWidget(QWidget):
             )
             self.setAttribute(Qt.WA_TranslucentBackground)  # 透明背景
 
-
-
             # 鼠标交互相关变量
-            self.dragging = False
-            self.offset = QPoint()
-            self.tray_menu = None  # 存储托盘菜单引用
+            self.dragging = False  # 是否正在拖动
+            self.drag_offset = QPoint()  # 拖动偏移量
 
             # 加载主图片
-            self.init_image()
-
-
-            # 初始位置：屏幕中央
+            self.init_image_mode()
             screen_geometry = QApplication.desktop().screenGeometry()
-            self.move(screen_geometry.center() - self.rect().center())
+            self.move(screen_geometry.center() - self.rect().center())  # 初始位置：屏幕中央
 
             # 设置定时器用于跟随鼠标
             self.timer = QTimer(self)
             self.timer.timeout.connect(self.follow_mouse)
             self.timer.start(20)  # 每20毫秒更新一次
 
-            # 创建系统托盘图标
-            self.create_tray_icon()
+            self.tray, self.tray_menu = create_tray(self)  # 创建系统托盘图标
 
             logger.info("程序启动成功")
 
@@ -170,186 +60,18 @@ class FollowAndDragWidget(QWidget):
             logger.error(f"FollowAndDragWidget初始化错误: {traceback.format_exc()}")
             raise
 
-    def set_image(self,pixmap):
-        self.image = pixmap.toImage()
-
-        self.image_label.setPixmap(pixmap)
-
-        # 调整窗口大小为图片大小
-        self.resize(pixmap.size())
-
-    def init_image(self):
+    def init_image_mode(self):
+        """初始化主图片标签"""
         self.image_label = QLabel(self)
-
-
-        # 图片状态相关变量
-        self.current_image_state = "image1"  # 当前图片状态
-
-        self.change_image_timer=QTimer(self)
-        self.change_image_timer.timeout.connect(self.change_image)
-        self.change_image_timer.start(10000)  # 10秒切换一次图片状态,概率
-
-
-
-        self.image_series_timer = QTimer(self)  # 图片系列变化定时器
-        self.image_series_timer.timeout.connect(self.update_image_series)
-        self.image_series_index = 0  # 当前系列图片索引
-
-        self.image_series = ["2-1", "2-2", "2-3", "2-2"]  # 图片2系列循环顺序
-
-        # 加载所有图片资源
-        self.load_all_images()
-        self.change_to_image1()
         self.image_label.setAlignment(Qt.AlignCenter)
+        self.mode_manager = ModeManager(self)
 
-    def load_all_images(self):
-        """加载所有需要的图片资源"""
-        self.images = {
-            "image1": self.load_image("img/image.png"),
-            "2-1": self.load_image("img/image2-1.png"),
-            "2-2": self.load_image("img/image2-2.png"),
-            "2-3": self.load_image("img/image2-3.png")
-        }
+    def set_image(self, pixmap):
+        """设置主图片"""
+        self.image = pixmap.toImage()  # 转换为QImage以获取像素信息
+        self.image_label.setPixmap(pixmap)  # 设置图片到标签
+        self.resize(pixmap.size())  # 调整窗口大小为图片大小
 
-    def load_image(self, path):
-        """加载单个图片并处理异常"""
-        try:
-            pixmap = QPixmap(path)
-            if pixmap.isNull():
-                raise FileNotFoundError(f"无法加载图片 {path}")
-            return pixmap
-        except Exception as e:
-            logger.error(f"图片加载错误({path}): {traceback.format_exc()}")
-            # 创建默认红色图片
-            default_pixmap = QPixmap(100, 100)
-            default_pixmap.fill(Qt.red)
-            return default_pixmap
-
-    def change_image(self):
-        """切换图片状态"""
-
-        # 概率切换图片状态
-        if random.random() < 0.5 and not self.dragging:  # 50%概率切换
-
-            if self.current_image_state == "image1":
-                self.change_to_image_series()
-            elif self.current_image_state == "image2-series":
-                self.change_to_image1()
-
-    def change_to_image1(self):
-        """切换到图片1状态"""
-        self.current_image_state = "image1"
-
-        self.set_image(self.images["image1"])
-        # self.image_label.setPixmap(self.images["image1"])
-        self.image_series_timer.stop()
-        logger.info("切换到图片1")
-
-
-        if random.random() < 0.3:  # 30%概率切换到系列图片
-            self.change_to_image_series()
-
-    def change_to_image_series(self):
-        """切换到图片系列状态"""
-        self.current_image_state = "image2-series"
-        self.image_series_index = 0
-        self.update_series_image()
-        self.image_series_timer.start(200)  # 每100ms切换一次
-        logger.info("进入图片系列循环")
-
-    def update_series_image(self):
-        """更新系列图片显示"""
-        current_img = self.image_series[self.image_series_index]
-        self.set_image(self.images[current_img])
-        # self.image_label.setPixmap(self.images[current_img])
-
-        # # 检查是否在2-1状态且有概率跳出循环
-        # if current_img == "2-1" and random.random() < 0.2 and not self.dragging:  # 20%概率跳出
-        #     self.change_to_image1()
-        #     return
-
-        # 更新索引（循环）
-        self.image_series_index = (self.image_series_index + 1) % len(self.image_series)
-
-    def update_image_series(self):
-        """定时器触发的系列图片更新"""
-        try:
-            if self.current_image_state == "image2-series":
-                self.update_series_image()
-        except Exception as e:
-            logger.error(f"更新系列图片错误: {traceback.format_exc()}")
-
-
-
-    def create_tray_icon(self):
-        try:
-            # 加载托盘图标
-            try:
-                tray_icon = QPixmap("img/image.png")  # 任务栏图标
-                if tray_icon.isNull():
-                    raise FileNotFoundError("无法加载托盘图标 image.png")
-                logger.info("托盘图标加载成功")
-            except Exception as e:
-                logger.error(f"托盘图标加载错误: {traceback.format_exc()}")
-                tray_icon = QPixmap(32, 32)
-                tray_icon.fill(Qt.blue)
-
-            self.tray = QSystemTrayIcon(self)
-            self.tray.setIcon(QIcon(tray_icon))
-
-            # 创建托盘菜单
-            self.create_context_menu()
-
-            self.tray.show()
-            logger.info("系统托盘图标创建成功")
-
-        except Exception as e:
-            logger.error(f"创建托盘图标错误: {traceback.format_exc()}")
-            raise
-
-    def create_context_menu(self):
-        """创建右键菜单(用于托盘和窗口右键)"""
-        try:
-            menu = QMenu()
-
-            # 跟随开关
-            follow_action = QAction("鼠标跟随", self, checkable=True)
-            follow_action.setChecked(self.follow_enabled)
-            follow_action.triggered.connect(self.toggle_follow)
-            menu.addAction(follow_action)
-
-            # 拖动开关
-            drag_action = QAction("拖动功能", self, checkable=True)
-            drag_action.setChecked(self.drag_enabled)
-            drag_action.triggered.connect(self.toggle_drag)
-            menu.addAction(drag_action)
-
-            menu.addSeparator()
-
-            # 设置
-            settings_action = QAction("设置", self)
-            settings_action.triggered.connect(self.show_settings)
-            menu.addAction(settings_action)
-
-            menu.addSeparator()
-
-            # 退出
-            exit_action = QAction("退出", self)
-            exit_action.triggered.connect(self.close)
-            menu.addAction(exit_action)
-
-            # 同时设置给托盘和窗口
-            self.tray.setContextMenu(menu)
-            self.tray_menu = menu  # 保存引用
-
-            # 双击托盘图标显示/隐藏窗口
-            self.tray.activated.connect(self.toggle_window_visibility)
-
-            logger.info("右键菜单创建成功")
-
-        except Exception as e:
-            logger.error(f"创建右键菜单错误: {traceback.format_exc()}")
-            raise
 
     def contextMenuEvent(self, event):
         """重写右键菜单事件"""
@@ -359,43 +81,6 @@ class FollowAndDragWidget(QWidget):
                 logger.info("用户右键点击窗口弹出菜单")
         except Exception as e:
             logger.error(f"显示右键菜单错误: {traceback.format_exc()}")
-
-    def toggle_window_visibility(self, reason):
-        try:
-            if reason == QSystemTrayIcon.DoubleClick:
-                if self.isVisible():
-                    self.hide()
-                    logger.info("用户双击托盘图标隐藏窗口")
-                else:
-                    self.show()
-                    logger.info("用户双击托盘图标显示窗口")
-        except Exception as e:
-            logger.error(f"切换窗口可见性错误: {traceback.format_exc()}")
-
-    def toggle_follow(self, checked):
-        try:
-            self.follow_enabled = checked
-            action = "开启" if checked else "关闭"
-            logger.info(f"用户{action}鼠标跟随功能")
-        except Exception as e:
-            logger.error(f"切换跟随状态错误: {traceback.format_exc()}")
-
-    def toggle_drag(self, checked):
-        try:
-            self.drag_enabled = checked
-            action = "开启" if checked else "关闭"
-            logger.info(f"用户{action}拖动功能")
-        except Exception as e:
-            logger.error(f"切换拖动状态错误: {traceback.format_exc()}")
-
-    def show_settings(self):
-        try:
-            logger.info("用户打开设置窗口")
-            dialog = SettingsDialog(self)
-            dialog.exec_()
-            logger.info("设置窗口关闭")
-        except Exception as e:
-            logger.error(f"显示设置对话框错误: {traceback.format_exc()}")
 
     def is_mouse_on_content(self, pos):
         """检查鼠标是否在图片的非透明区域"""
@@ -411,9 +96,8 @@ class FollowAndDragWidget(QWidget):
 
         return False
 
-
-
     def follow_mouse(self):
+        """处理跟随鼠标移动事件"""
         try:
             current_time = datetime.datetime.now()
 
@@ -422,10 +106,10 @@ class FollowAndDragWidget(QWidget):
                 logger.info(f"跟随鼠标移动结束，持续时间: {duration:.2f}秒")
                 self.is_following = False
 
-            if self.follow_enabled and not self.dragging:
+            if config.follow_enabled and not self.dragging:
 
-                global_mouse_pos = QCursor.pos() # 获取鼠标在屏幕上的位置
-                mouse_pos = self.mapFromGlobal(global_mouse_pos) # 将全局坐标转换为相对于窗口的坐标
+                global_mouse_pos = QCursor.pos()  # 获取鼠标在屏幕上的位置
+                mouse_pos = self.mapFromGlobal(global_mouse_pos)  # 将全局坐标转换为相对于窗口的坐标
 
                 # 检查鼠标是否在图片内容区域（非透明部分）
                 if self.is_mouse_on_content(mouse_pos):
@@ -448,7 +132,7 @@ class FollowAndDragWidget(QWidget):
                         logger.info("开始跟随鼠标移动")
 
                     # 计算新位置（逐步靠近鼠标）
-                    new_pos = self.pos() + direction * self.follow_speed
+                    new_pos = self.pos() + direction * config.follow_speed
                     self.move(new_pos)
 
                     self.last_follow_time = current_time
@@ -466,33 +150,38 @@ class FollowAndDragWidget(QWidget):
             logger.error(f"跟随鼠标错误: {traceback.format_exc()}")
 
     def mousePressEvent(self, event):
+        """处理鼠标按下事件，开始拖动图片"""
         try:
-            if event.button() == Qt.LeftButton and self.drag_enabled:
+            if event.button() == Qt.LeftButton and config.drag_enabled:
 
-                if self.current_image_state == "image1":
-                    self.change_to_image_series()
+                if self.get_current_mode() == "image1":
+                    pass
+                    # self.change_to_image_series()
 
                 # 开始拖动
                 self.dragging = True
-                self.offset = event.pos()
+                self.drag_offset = event.pos()
                 logger.info("用户开始拖动图片")
         except Exception as e:
             logger.error(f"鼠标按下事件错误: {traceback.format_exc()}")
 
     def mouseMoveEvent(self, event):
+        """处理鼠标移动事件，拖动图片"""
         try:
-            if self.dragging and self.drag_enabled:
+            if self.dragging and config.drag_enabled:
                 # 拖动状态下移动窗口
-                self.move(event.globalPos() - self.offset)
+                self.move(event.globalPos() - self.drag_offset)
         except Exception as e:
             logger.error(f"鼠标移动事件错误: {traceback.format_exc()}")
 
     def mouseReleaseEvent(self, event):
+        """处理鼠标释放事件，结束拖动图片"""
         try:
             if event.button() == Qt.LeftButton and self.dragging:
 
-                if self.current_image_state == "image2-series":
-                    self.change_to_image1()
+                if self.get_current_mode() == "image2-series":
+                    pass
+                    # self.change_to_image1()
 
                 # 结束拖动
                 self.dragging = False
@@ -501,6 +190,7 @@ class FollowAndDragWidget(QWidget):
             logger.error(f"鼠标释放事件错误: {traceback.format_exc()}")
 
     def closeEvent(self, event):
+        """处理关闭事件，清理资源"""
         try:
             # 清理资源
             self.timer.stop()

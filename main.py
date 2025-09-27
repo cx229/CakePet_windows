@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QLabel, QWidget, QSystemTrayIcon,
                              QMenu, QAction, QDialog, QVBoxLayout, QSlider,
                              QCheckBox, QPushButton, QMessageBox)
 from PyQt5.QtCore import Qt, QPoint, QTimer, QSize
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap, QIcon, QCursor
 
 
 def setup_logging():
@@ -152,7 +152,11 @@ class FollowAndDragWidget(QWidget):
                 # 创建默认图片
                 pixmap = QPixmap(100, 100)
                 pixmap.fill(Qt.red)
-                self.image_label.setText("图片加载失败")
+                self.image_label.setText("图片加载失败,请检查image.png是否存在。使用默认图片")
+
+            # 转换为QImage以便检查像素
+            self.image = pixmap.toImage()
+
 
             self.image_label.setPixmap(pixmap)
             self.image_label.setAlignment(Qt.AlignCenter)
@@ -299,19 +303,47 @@ class FollowAndDragWidget(QWidget):
         except Exception as e:
             logger.error(f"显示设置对话框错误: {traceback.format_exc()}")
 
+    def is_mouse_on_content(self, pos):
+        """检查鼠标是否在图片的非透明区域"""
+        # 将坐标转换为图片坐标系
+        img_pos = self.image_label.mapFromParent(pos)
+
+        # 检查坐标是否在图片范围内
+        if 0 <= img_pos.x() < self.image.width() and 0 <= img_pos.y() < self.image.height():
+            # 获取像素的alpha值
+
+            alpha = self.image.pixelColor(img_pos).alpha()
+            return alpha > 0  # alpha>0表示有内容
+
+        return False
+
+
+
     def follow_mouse(self):
         try:
             current_time = datetime.datetime.now()
 
+            def move_over():
+                duration = (current_time - self.follow_start_time).total_seconds()
+                logger.info(f"跟随鼠标移动结束，持续时间: {duration:.2f}秒")
+                self.is_following = False
+
             if self.follow_enabled and not self.dragging:
-                # 获取鼠标和窗口的当前位置
-                mouse_pos = self.mapFromGlobal(QApplication.desktop().cursor().pos())
-                # window_center = QPoint(self.width() // 2, self.height() // 2)
-                window_center=QPoint(0,0) # 修改为左上角跟随
+
+                global_mouse_pos = QCursor.pos() # 获取鼠标在屏幕上的位置
+                mouse_pos = self.mapFromGlobal(global_mouse_pos) # 将全局坐标转换为相对于窗口的坐标
+
+                # 检查鼠标是否在图片内容区域（非透明部分）
+                if self.is_mouse_on_content(mouse_pos):
+                    # 如果之前正在跟随，现在停止了，记录跟随结束
+                    if self.is_following:
+                        move_over()
+                    return
 
                 # 计算移动方向向量
-                direction = mouse_pos - window_center
-                distance = math.sqrt(direction.x() ** 2 + direction.y() ** 2)
+                window_reference_point = QPoint(0, 0)  # 左上角跟随
+                direction = mouse_pos - window_reference_point
+                distance = math.hypot(direction.x(), direction.y())
 
                 # 如果距离足够大才移动
                 if distance > 5:
@@ -329,15 +361,12 @@ class FollowAndDragWidget(QWidget):
                 else:
                     # 如果之前正在跟随，现在停止了，记录跟随结束
                     if self.is_following:
-                        duration = (current_time - self.follow_start_time).total_seconds()
-                        logger.info(f"跟随鼠标移动结束，持续时间: {duration:.2f}秒")
-                        self.is_following = False
+                        move_over()
+                        return
             else:
                 # 如果之前正在跟随，现在停止了（因为拖动或关闭跟随），记录跟随结束
                 if self.is_following:
-                    duration = (current_time - self.follow_start_time).total_seconds()
-                    logger.info(f"跟随鼠标移动结束，持续时间: {duration:.2f}秒")
-                    self.is_following = False
+                    move_over()
 
         except Exception as e:
             logger.error(f"跟随鼠标错误: {traceback.format_exc()}")

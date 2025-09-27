@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QLabel, QWidget, QSystemTrayIcon,
 from PyQt5.QtCore import Qt, QPoint, QTimer, QSize
 from PyQt5.QtGui import QPixmap, QIcon, QCursor
 
+import modes
 from configs import Config
 from modes import ModeManager
 from tray import create_tray
@@ -65,6 +66,8 @@ class FollowAndDragWidget(QWidget):
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
         self.mode_manager = ModeManager(self)
+        # modes.random_change_mode() # 随机切换模式
+        modes.set_mode(modes.SitMode.SitMode.NAME)
 
     def set_image(self, pixmap):
         """设置主图片"""
@@ -153,15 +156,14 @@ class FollowAndDragWidget(QWidget):
         """处理鼠标按下事件，开始拖动图片"""
         try:
             if event.button() == Qt.LeftButton and config.drag_enabled:
-
-                if self.get_current_mode() == "image1":
-                    pass
-                    # self.change_to_image_series()
+                # 切换到拖动模式
+                modes.set_mode(modes.DragMode.DragMode.NAME)
 
                 # 开始拖动
                 self.dragging = True
-                self.drag_offset = event.pos()
-                logger.info("用户开始拖动图片")
+                # self.drag_offset = event.pos()
+                self.drag_offset = QPoint(QPoint(self.width() // 2, 0))
+                logger.info(f"用户开始拖动图片, event.pos={event.pos()}, drag_offset={self.drag_offset}")
         except Exception as e:
             logger.error(f"鼠标按下事件错误: {traceback.format_exc()}")
 
@@ -171,6 +173,7 @@ class FollowAndDragWidget(QWidget):
             if self.dragging and config.drag_enabled:
                 # 拖动状态下移动窗口
                 self.move(event.globalPos() - self.drag_offset)
+                logger.info(f"用户拖动图片, event.globalPos()={event.globalPos()}, drag_offset={self.drag_offset}")
         except Exception as e:
             logger.error(f"鼠标移动事件错误: {traceback.format_exc()}")
 
@@ -178,10 +181,7 @@ class FollowAndDragWidget(QWidget):
         """处理鼠标释放事件，结束拖动图片"""
         try:
             if event.button() == Qt.LeftButton and self.dragging:
-
-                if self.get_current_mode() == "image2-series":
-                    pass
-                    # self.change_to_image1()
+                modes.random_change_mode() # 随机切换模式
 
                 # 结束拖动
                 self.dragging = False

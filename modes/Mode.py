@@ -12,20 +12,19 @@ class Mode:
     NAME = "base"
     def __init__(self,widget:'FollowAndDragWidget',confs:dict):
         self.widget=widget
-
         self.confs = confs
         self.index = 1
         self.image_series_timer = QTimer(self.widget)  # 图片系列变化定时器
         self.image_series_timer.timeout.connect(self.update_image_series)
 
-        self.update_image_series()
-
     def start(self):
         self.index = 1
         self.update_image_series()
+        logger.info(f"模式 {self.NAME} 启动")
 
     def stop(self):
         self.image_series_timer.stop()
+        logger.info(f"模式 {self.NAME} 停止")
 
     def update_image_series(self):
         conf = self.confs[self.index]

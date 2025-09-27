@@ -51,17 +51,17 @@ class Menu(QMenu):
         self.exit_action.triggered.connect(self.parent.close)    # 退出
 
         # # 配置变更信号
-        # config.follow_enabled_changed.connect(self._update_follow_action)
-        # config.drag_enabled_changed.connect(self._update_drag_action)
+        config.follow_enabled_changed.connect(self._update_follow_action)
+        config.drag_enabled_changed.connect(self._update_drag_action)
 
-    @config.follow_enabled_changed.connect
+    # @config.follow_enabled_changed.connect
     def _update_follow_action(self, sender, value):
         """更新跟随菜单状态"""
         if self.follow_action.isChecked() != value:
             with signal_blocker(self.follow_action):
                 self.follow_action.setChecked(value)
 
-    @config.drag_enabled_changed.connect
+    # @config.drag_enabled_changed.connect
     def _update_drag_action(self, sender, value):
         """更新拖动菜单状态"""
         if self.drag_action.isChecked() != value:

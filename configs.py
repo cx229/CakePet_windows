@@ -41,7 +41,7 @@ class ConfigMeta(type):
 
 
 class Config(metaclass=ConfigMeta):
-    mode_name = None
+    mode_name = "base"
     follow_enabled = True  # 是否开启跟随鼠标
     drag_enabled = True  # 是否开启拖动功能
     follow_speed = 0.1  # 跟随速度（越大越快）

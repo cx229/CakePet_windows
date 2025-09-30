@@ -6,7 +6,7 @@ from PyQt5.QtGui import QPixmap
 from utils.log_util import logger
 
 
-def load_img(path):
+def load_img(path) ->QPixmap:
     """加载单个图片并处理异常"""
     try:
         pixmap = QPixmap(path)

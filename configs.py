@@ -42,10 +42,15 @@ class ConfigMeta(type):
 
 class Config(metaclass=ConfigMeta):
     mode_name = "base"
-    follow_enabled = True  # 是否开启跟随鼠标
+    mode_change_enable = True # 是否开启模式切换
+    follow_enabled = False  # 是否开启跟随鼠标
     drag_enabled = True  # 是否开启拖动功能
     follow_update_interval = 3  # 跟随更新间隔（毫秒）
-    follow_speed = 5 # 每次的跟随，移动的像素点长度
+    follow_speed = 5  # 每次的跟随，移动的像素点长度
+    is_dragging = False
+    follow_start_time = None  # 跟随开始时间
+    last_follow_time = None  # 上一次跟随时间
+    is_following = False  # 是否正在跟随鼠标
 
     def __init__(self):
         # 不再需要复制 _data，因为元类已经处理
@@ -68,18 +73,15 @@ class Config(metaclass=ConfigMeta):
 
 config = Config()
 
-
 if __name__ == '__main__':
-
-
-
     # 监听信号
     @config.follow_enabled_changed.connect
     def on_follow_changed(sender, value):
-        print(f"Follow enabled changed to: {value}") # 结果是False
+        print(f"Follow enabled changed to: {value}")  # 结果是False
+
 
     config.follow_enabled = False  # 触发信号
     config.follow_enabled = True  # 触发信号
     config.follow_enabled = False  # 触发信号
 
-    print(config.follow_enabled) # 结果是True, False
+    print(config.follow_enabled)  # 结果是True, False

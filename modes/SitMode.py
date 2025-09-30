@@ -10,7 +10,7 @@ class SitMode(Mode):
     NAME = "sit"
     def __init__(self, widget: 'FollowAndDragWidget'):
         super().__init__(widget, confs={
-            1: {"img": load_img("img/image.png"), "next": None, "duration": 0},
+            1: {"img": load_img("img/image.png"), "next": 1, "duration": 0},
         })
 
 

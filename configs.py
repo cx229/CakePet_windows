@@ -44,7 +44,8 @@ class Config(metaclass=ConfigMeta):
     mode_name = "base"
     follow_enabled = True  # 是否开启跟随鼠标
     drag_enabled = True  # 是否开启拖动功能
-    follow_speed = 0.1  # 跟随速度（越大越快）
+    follow_update_interval = 3  # 跟随更新间隔（毫秒）
+    follow_speed = 5 # 每次的跟随，移动的像素点长度
 
     def __init__(self):
         # 不再需要复制 _data，因为元类已经处理

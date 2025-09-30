@@ -37,8 +37,8 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.speed_label)
 
         self.speed_slider = QSlider(Qt.Horizontal, self)
-        self.speed_slider.setRange(1, 20)
-        self.speed_slider.setValue(int(config.follow_speed * 10))
+        self.speed_slider.setRange(1, 100)
+        self.speed_slider.setValue(int(config.follow_speed) * 10)
         layout.addWidget(self.speed_slider)
 
         # 拖动功能开关

@@ -5,12 +5,13 @@ from PyQt5.QtCore import QTimer
 from blinker import Signal
 
 # import signals
-from modes import SitMode, DragMode
+from modes import SitMode, DragMode, WalkMode, PatHeadMode
 from utils.log_util import logger
 from configs import config
 
 if TYPE_CHECKING:
     from main import FollowAndDragWidget
+
 
 mode_list = {}
 
@@ -19,7 +20,8 @@ def register_mode(widget: 'FollowAndDragWidget'):
     """注册模式"""
     modes_class = [SitMode.SitMode,
                    DragMode.DragMode,
-                   # WalkMode,
+                   WalkMode.WalkMode,
+                   PatHeadMode.PatHeadMode,
                    ]
     mode_list.update({mode.NAME: mode(widget) for mode in modes_class})
 
@@ -38,7 +40,7 @@ def set_mode(name: str):
         raise ValueError(f"未知模式: {name}")
 
 class ChangeModeTimer:
-    def __init__(self, widget: 'FollowAndDragWidget', change_interval=10000, change_prob=0):
+    def __init__(self, widget: 'FollowAndDragWidget', change_interval=10000, change_prob=0.5):
         self.widget = widget
         self.change_interval = change_interval
         self.change_prob = change_prob

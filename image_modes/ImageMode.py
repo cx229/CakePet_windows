@@ -18,6 +18,14 @@ class ImageMode(ABC):
         """重新开始模式"""
         logger.info(f"模式 {self.name()} 重新开始")
 
+    def pause(self):
+        """暂停模式"""
+        logger.info(f"模式 {self.name()} 暂停")
+
+    def resume(self):
+        """恢复模式"""
+        logger.info(f"模式 {self.name()} 恢复")
+
     def stop(self):
         """停止模式"""
         logger.info(f"模式 {self.name()} 停止")

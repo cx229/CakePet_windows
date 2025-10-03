@@ -29,21 +29,21 @@ class SettingsDialog(QDialog):
 
         # 跟随功能开关
         self.follow_check = QCheckBox("启用鼠标跟随", self)
-        self.follow_check.setChecked(config.follow_enabled)
+        self.follow_check.setChecked(config.mouse_follow_enabled)
         layout.addWidget(self.follow_check)
 
         # 跟随速度设置
-        self.speed_label = QLabel(f"跟随速度: {config.follow_speed:.1f}", self)
+        self.speed_label = QLabel(f"跟随速度: {config.mouse_follow_speed:.1f}", self)
         layout.addWidget(self.speed_label)
 
         self.speed_slider = QSlider(Qt.Horizontal, self)
         self.speed_slider.setRange(1, 100)
-        self.speed_slider.setValue(int(config.follow_speed) * 10)
+        self.speed_slider.setValue(int(config.mouse_follow_speed) * 10)
         layout.addWidget(self.speed_slider)
 
         # 拖动功能开关
         self.drag_check = QCheckBox("启用拖动功能", self)
-        self.drag_check.setChecked(config.drag_enabled)
+        self.drag_check.setChecked(config.drag_follow_enabled)
         layout.addWidget(self.drag_check)
 
         self.setLayout(layout)
@@ -58,8 +58,8 @@ class SettingsDialog(QDialog):
         """处理跟随功能切换"""
         try:
             with signal_blocker(self.follow_check):
-                config.follow_enabled = bool(state)
-                logger.info(f"用户{'开启' if state else '关闭'}鼠标跟随")
+                config.mouse_follow_enabled = bool(state)
+                logger.info(f"设置，用户{'开启' if state else '关闭'}鼠标跟随")
         except Exception as e:
             logger.error(f"切换跟随状态错误: {traceback.format_exc()}")
 
@@ -67,8 +67,8 @@ class SettingsDialog(QDialog):
         """处理拖动功能切换"""
         try:
             with signal_blocker(self.drag_check):
-                config.drag_enabled = bool(state)
-                logger.info(f"用户{'开启' if state else '关闭'}拖动功能")
+                config.drag_follow_enabled = bool(state)
+                logger.info(f"设置，用户{'开启' if state else '关闭'}拖动功能")
         except Exception as e:
             logger.error(f"切换拖动状态错误: {traceback.format_exc()}")
 
@@ -76,8 +76,8 @@ class SettingsDialog(QDialog):
         """处理速度设置变化"""
         try:
             speed = value / 10
-            config.follow_speed = speed
+            config.mouse_follow_speed = speed
             self.speed_label.setText(f"跟随速度: {speed:.1f}")
-            logger.info(f"用户设置跟随速度为: {speed}")
+            logger.info(f"设置，用户设置跟随速度为: {speed}")
         except Exception as e:
             logger.error(f"更新速度设置错误: {traceback.format_exc()}")

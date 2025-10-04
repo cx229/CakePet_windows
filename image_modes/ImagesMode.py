@@ -58,13 +58,13 @@ class ImagesMode(TimerNextChange):
         self.image_series_timer.stop()
 
     def update_image_series(self):
-        if self.index in self.confs:
+        if self.index is None: # 没有下一张图片，切换到下一个模式
+            self.change_mode()
+        elif self.index in self.confs:
             conf = self.confs[self.index]
             self.update_widget_image(conf)
-            if conf.next:
-                self.index = conf.next
-            else:  # 没有下一张图片，切换到下一个模式
-                self.change_mode()
+            self.index = conf.next
+
             if conf.duration:
                 duration = conf.duration() if callable(conf.duration) else conf.duration
                 self.image_series_timer.start(duration)

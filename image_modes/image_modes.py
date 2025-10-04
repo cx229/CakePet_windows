@@ -98,9 +98,12 @@ class ThrowFollowMode(ImagesMode):
         """投"""
         super().__init__(widget)
         self.confs = {
-            1: ImagesMode.ImageConf(Images.Throw.S1.value, 2, lambda: random.randint(140, 180)),
-            2: ImagesMode.ImageConf(Images.Throw.S2.value, 3, lambda: random.randint(140, 180)),
-            3: ImagesMode.ImageConf(Images.Throw.S3.value, 1, lambda: random.randint(140, 180)),
+            1: ImagesMode.ImageConf(Images.Roll.S1.value, 2, lambda: random.randint(140, 180)),
+            2: ImagesMode.ImageConf(Images.Roll.S2.value, 3, lambda: random.randint(140, 180)),
+            3: ImagesMode.ImageConf(Images.Roll.S3.value, 1, lambda: random.randint(140, 180)),
+            4: ImagesMode.ImageConf(Images.Roll.S4.value, 5, lambda: random.randint(140, 180)),
+            5: ImagesMode.ImageConf(Images.Roll.S5.value, 6, lambda: random.randint(140, 180)),
+            6: ImagesMode.ImageConf(Images.Roll.S6.value, 1, lambda: random.randint(140, 180)),
         }
         self.time_next_enabled = False  # 关闭定时切换
         self.next_mode_name = ThrowFallStandFollowMode.name()  # 指定下一个模式为摇头
@@ -111,12 +114,12 @@ class ThrowFallStandFollowMode(ImagesMode):
         """掉落"""
         super().__init__(widget)
         self.confs = {
-            1: ImagesMode.ImageConf(Images.FallStand.S1.value, 2, lambda: random.randint(140, 180)),
-            2: ImagesMode.ImageConf(Images.FallStand.S2.value, 3, lambda: random.randint(140, 180)),
-            3: ImagesMode.ImageConf(Images.FallStand.S3.value, 4, lambda: random.randint(140, 180)),
-            4: ImagesMode.ImageConf(Images.FallStand.S2.value, None, lambda: random.randint(140, 180)),
+            1: ImagesMode.ImageConf(Images.JumpDown.S1.value, 2, lambda: random.randint(50, 70)),
+            2: ImagesMode.ImageConf(Images.JumpDown.S2.value, 3, lambda: random.randint(80, 90)),
+            3: ImagesMode.ImageConf(Images.JumpDown.S3.value, None, lambda: random.randint(200, 250)),
         }
         self.time_next_enabled = False  # 关闭定时切换
+        self.next_mode_name = WalkMode.name()
 
 
 class MouseFollowMode(ImagesMode):

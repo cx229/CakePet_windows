@@ -99,15 +99,22 @@ class Images:
         S5 = ImageMeta("lift_up5", "img/lift_up-5.png", anchor_y=71)
         S6 = ImageMeta("lift_up6", "img/lift_up-6.png", anchor_y=71)
 
-    class Throw(Enum):  # 抛掷
-        S1 = ImageMeta("throw1", "img/sit_clam-1.png")
-        S2 = ImageMeta("throw2", "img/sit_clam-1.png")
-        S3 = ImageMeta("throw3", "img/sit_clam-1.png")
+    # class Throw(Enum):  # 滚动
+    #     S1 = ImageMeta("throw1", "img/sit_clam-1.png")
+    #     S2 = ImageMeta("throw2", "img/sit_clam-1.png")
+    #     S3 = ImageMeta("throw3", "img/sit_clam-1.png")
+    class Roll(Enum):  # 滚动
+        S1 = ImageMeta("roll1", "img/roll-1.png",anchor_x=41)
+        S2 = ImageMeta("roll2", "img/roll-2.png",anchor_x=41)
+        S3 = ImageMeta("roll3", "img/roll-3.png",anchor_x=41)
+        S4 = ImageMeta("roll4", "img/roll-4.png",anchor_x=41)
+        S5 = ImageMeta("roll5", "img/roll-5.png",anchor_x=41)
+        S6 = ImageMeta("roll6", "img/roll-6.png",anchor_x=41)
 
-    class FallStand(Enum):  # 掉落地面
-        S1 = ImageMeta("fall_stand1", "img/sit_clam-1.png")
-        S2 = ImageMeta("fall_stand2", "img/sit_clam-2.png")
-        S3 = ImageMeta("fall_stand3", "img/sit_clam-3.png")
+    class JumpDown(Enum):  # 掉落地面
+        S1 = ImageMeta("jump_down1", "img/jump_down-1.png")
+        S2 = ImageMeta("jump_down2", "img/jump_down-2.png")
+        S3 = ImageMeta("jump_down3", "img/jump_down-3.png")
 
 
 #

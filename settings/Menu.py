@@ -3,9 +3,14 @@ from PyQt5.QtWidgets import (QMenu, QAction, QDialog, QVBoxLayout,
                              QSlider, QCheckBox, QPushButton, QMessageBox,
                              QHBoxLayout, QLabel, QApplication)
 from configs import config
-from tray.SettingsDialog import SettingsDialog
+from settings.SettingsDialog import SettingsDialog
 from utils.log_util import logger
 from utils.widget_util import signal_blocker
+
+# Windows API常量
+WS_EX_LAYERED = 0x00080000
+WS_EX_TRANSPARENT = 0x00000020
+GWL_EXSTYLE = -20
 
 
 class Menu(QMenu):
@@ -40,7 +45,10 @@ class Menu(QMenu):
         self.bigger_action.setChecked(config.bigger_flag)
         self.addAction(self.bigger_action)
 
-        self.addSeparator()
+        # 点击穿透开关
+        self.click_through_action = QAction("点击穿透", self.parent, checkable=True)
+        self.click_through_action.setChecked(config.click_through_enabled)
+        self.addAction(self.click_through_action)
 
         # 设置菜单
         self.settings_action = QAction("设置", self.parent)
@@ -59,6 +67,7 @@ class Menu(QMenu):
         self.throw_action.toggled.connect(self._on_throw_toggled)
         self.follow_action.toggled.connect(self._on_follow_toggled)
         self.bigger_action.toggled.connect(self._on_bigger_toggled)
+        self.click_through_action.toggled.connect(self._on_click_through_toggled)
 
         self.settings_action.triggered.connect(self._show_settings)  # 设置
         self.exit_action.triggered.connect(QApplication.instance().quit)  # 直接退出应用
@@ -68,6 +77,14 @@ class Menu(QMenu):
         config.throw_follow_enabled_changed.connect(self._update_throw_action)
         config.mouse_follow_enabled_changed.connect(self._update_follow_action)
         config.bigger_flag_changed.connect(self._update_bigger_action)
+        config.click_through_enabled_changed.connect(self._update_click_through_action)
+        # config.click_through_enabled_changed.connect(self._handle_click_through_action)
+
+    def _update_click_through_action(self, sender, value):
+        """更新点击穿透菜单状态"""
+        if self.click_through_action.isChecked() != value:
+            with signal_blocker(self.click_through_action):
+                self.click_through_action.setChecked(value)
 
     def _update_drag_action(self, sender, value):
         """更新拖动菜单状态"""
@@ -97,7 +114,7 @@ class Menu(QMenu):
         """处理菜单拖动切换"""
         try:
             config.drag_follow_enabled = checked
-            logger.info(f"用户{'开启' if checked else '关闭'}拖动功能")
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}拖动功能")
         except Exception as e:
             logger.error(f"菜单切换拖动错误: {traceback.format_exc()}")
 
@@ -105,16 +122,15 @@ class Menu(QMenu):
         """处理菜单抛掷切换"""
         try:
             config.throw_follow_enabled = checked
-            logger.info(f"用户{'开启' if checked else '关闭'}抛掷功能")
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}抛掷功能")
         except Exception as e:
             logger.error(f"菜单切换抛掷错误: {traceback.format_exc()}")
-
 
     def _on_follow_toggled(self, checked):
         """处理菜单跟随切换"""
         try:
             config.mouse_follow_enabled = checked
-            logger.info(f"用户{'开启' if checked else '关闭'}鼠标跟随")
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}鼠标跟随")
         except Exception as e:
             logger.error(f"菜单切换跟随错误: {traceback.format_exc()}")
 
@@ -122,9 +138,17 @@ class Menu(QMenu):
         """处理菜单放大切换"""
         try:
             config.bigger_flag = checked
-            logger.info(f"用户{'开启' if checked else '关闭'}放大功能")
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}放大功能")
         except Exception as e:
             logger.error(f"菜单切换放大错误: {traceback.format_exc()}")
+
+    def _on_click_through_toggled(self, checked):
+        """处理菜单点击穿透切换"""
+        try:
+            config.click_through_enabled = checked
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}点击穿透功能")
+        except Exception as e:
+            logger.error(f"菜单切换点击穿透错误: {traceback.format_exc()}")
 
     def _show_settings(self):
         """显示设置对话框"""

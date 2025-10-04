@@ -1,7 +1,7 @@
 
+
+y=True
+
 x=None
-y= 2
 
-z= x or y
-
-print(z)
+print(x != y)

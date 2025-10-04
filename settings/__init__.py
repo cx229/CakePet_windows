@@ -2,8 +2,8 @@ import traceback
 
 from PyQt5.QtWidgets import QWidget, QSystemTrayIcon
 
-from tray.Menu import Menu
-from tray.TrayIcon import TrayIcon
+from settings.Menu import Menu
+from settings.TrayIcon import TrayIcon
 from utils.log_util import logger
 
 def create_tray(parent:QWidget):

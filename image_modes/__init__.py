@@ -3,6 +3,7 @@ from image_modes.ChangeNextMode import NextChangeMode
 from image_modes.image_modes import *
 
 modes_standby_fix = [SitClamMode, SitPuffedMode, PatHeadMode] # 固定待机模式
+# modes_standby_fix = [ PatHeadMode] # 固定待机模式
 modes_standby_move = [WalkMode] # 移动待机模式
 
 # 模式映射,是所有模式的映射

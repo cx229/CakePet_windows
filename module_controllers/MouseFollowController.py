@@ -1,15 +1,13 @@
 import datetime
 from typing import TYPE_CHECKING
 
-from PyQt5.QtCore import QTimer, QPoint
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
 
 if TYPE_CHECKING:
     from FollowAndDragWidget import FollowAndDragWidget
-from ScreenMonitor import get_cur_work_bottom
+from monitors.ScreenMonitor import get_cur_work_bottom
 from module_controllers.ModuleController import ModuleController
-import numpy as np
 
 import image_modes
 import math
@@ -18,7 +16,6 @@ from PyQt5.QtCore import Qt, QPoint, QTimer, QPointF
 
 from utils.log_util import logger
 from configs import config
-from KeyMonitor import keyboard, key_monitor
 
 
 class MouseFollowController(ModuleController):
@@ -26,13 +23,10 @@ class MouseFollowController(ModuleController):
     1. 拖拽： 可开关
         1.1 长按鼠标左键，开始拖拽跟随主体
         1.2 拖拽动画
-    2. 抛掷： 非静态
+    2. 抛掷： 可开关
         2.1 拖拽结束后，主体受初速度和重力影响，抛物线
         2.2 抛掷动画
-    3. 重力：非静态
-        3.1 抛掷落地后，主体受重力影响修正位置
-        3.2 重力动画
-    4. 跟随： 可开关
+    3. 跟随： 可开关
         4.1 跟随：
             4.1.1 降落稳定后，主体跟随鼠标移动，按住Ctrl时停止跟随
             4.1.2 非位移待机动作
@@ -170,11 +164,10 @@ class MouseFollowController(ModuleController):
             new_pos = QPoint(new_pos_f.toPoint())  # 转换回 QPoint
             return new_pos - now_pos
 
-        ctrl_l_only = key_monitor.check_key(keyboard.Key.ctrl_l, is_only=True)
-        if not ctrl_l_only:
+        if not config.key_ctrl_l_only:
             mouse_pos = self.widget.mapFromGlobal(QCursor.pos())  # 相对图片左上角，鼠标坐标
             cur_pos = config.anchor_pos
-            target_pos = config.standard_anchor_pos + QPoint(mouse_pos.x() + 10, mouse_pos.y() + 10)  # 目标位置是鼠标位置
+            target_pos = config.standard_anchor_pos * config.size_ratio_base + QPoint(mouse_pos.x() + 10, mouse_pos.y() + 10)  # 目标位置是鼠标位置
             distance = math.hypot(target_pos.x() - cur_pos.x(), target_pos.y() - cur_pos.y())  # 计算目标位置到当前位置的距离
 
             threshold = 0 if config.is_mouse_follow else 80  # 跟随状态下，阈值为0，否则为10

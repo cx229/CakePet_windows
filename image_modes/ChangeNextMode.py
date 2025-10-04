@@ -12,8 +12,11 @@ def get_random_next_mode_name(current_mode_name: str, available_modes_name: list
     """获取随机下一个模式名称"""
     if available_modes_name is None:  # 没有指定模式列表时，使用所有待机模式
         from image_modes import modes_standby_fix, modes_standby_move
-        modes = modes_standby_fix  # 固定待机模式
-        if not config.mouse_follow_enabled:  # 如果不是鼠标跟随模式，则添加移动模式
+        modes = []
+        # 固定待机模式
+        modes += modes_standby_fix
+        # 如果不是鼠标跟随模式，则添加移动模式
+        if not config.mouse_follow_enabled:
             modes += modes_standby_move
         modes_name = [str(m.name()) for m in modes]
         available_modes_name = [name for name in modes_name if name != current_mode_name]  # 排除当前模式

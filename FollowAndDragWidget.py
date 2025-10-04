@@ -1,15 +1,17 @@
 import traceback
 from typing import Optional
 
-from PyQt5.QtWidgets import (QApplication, QLabel, QWidget)
+from PyQt5.QtWidgets import (QLabel, QWidget)
 from PyQt5.QtCore import Qt, QPoint, QRect, QPointF
 from PyQt5.QtGui import QPixmap, QTransform, QCursor
 
-from ScreenMonitor import ScreenMonitor
+from module_controllers.ClickThroughController import ClickThroughController
+from monitors.KeyMonitor import KeyMonitor
+from monitors.ScreenMonitor import ScreenMonitor
 from image_modes.ModeManager import ModeManager
 from module_controllers.MouseFollowController import MouseFollowController
 from resmeta.imagemeta import ImageMeta
-from tray import create_tray
+from settings import create_tray
 from utils.log_util import logger
 from configs import config
 from module_controllers.SizeGrowingController import SizeGrowingController
@@ -30,9 +32,10 @@ class FollowAndDragWidget(QWidget):
                 | Qt.Tool  # 不显示在任务栏
             )
             self.setAttribute(Qt.WA_TranslucentBackground)  # 透明背景
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)  # 鼠标穿透
 
-            # 鼠标交互相关变量
-            self.drag_offset = QPoint()  # 拖动偏移量
+            # # 鼠标交互相关变量
+            # self.drag_offset = QPoint()  # 拖动偏移量
 
             # 加载主图片
             # self.size_ratio = 1
@@ -42,6 +45,8 @@ class FollowAndDragWidget(QWidget):
 
             self.image_label = QLabel(self)
             self.image_label.setAlignment(Qt.AlignCenter)  # 内容据中
+            self.image_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)  # 鼠标穿透
+
             # self.image_label.setStyleSheet("background-color: red;")  # 红色背景 # DEV
 
             self.screen_monitor = ScreenMonitor(self)  # 屏幕监控器
@@ -49,8 +54,10 @@ class FollowAndDragWidget(QWidget):
             self.screen_monitor.workarea_changed.connect(self._on_workarea_changed)
 
             self.mode_manager = ModeManager(self)
-            self.follow_controller = MouseFollowController(self)
+            self.key_monitor = KeyMonitor()
 
+            self.follow_controller = MouseFollowController(self)
+            self.click_through_controller = ClickThroughController(self)  # 点击穿透控制器
             self.size_growing_controller = SizeGrowingController(self)  # 大小增长控制器
             self.tray, self.tray_menu = create_tray(self)  # 创建系统托盘图标
 
@@ -62,9 +69,11 @@ class FollowAndDragWidget(QWidget):
             raise
 
     def start(self):
-        self.mode_manager.set_init_mode()
-        self.size_growing_controller.start()
-        self.follow_controller.start()
+        self.key_monitor.start()  # 启动键盘监听线程
+        self.mode_manager.set_init_mode()  # 设置初始模式
+        self.size_growing_controller.start()  # 启动大小增长控制器，开始计时
+        self.follow_controller.start()  # 启动鼠标跟随控制器，开始跟随鼠标
+        self.click_through_controller.start()  # 启动点击穿透控制器，开始设置窗口点击穿透
 
     def get_cursor_pos(self) -> QPointF:
         """获取当前鼠标位置，相对窗口坐标"""
@@ -74,16 +83,10 @@ class FollowAndDragWidget(QWidget):
         """获取当前图片位置，相对窗口坐标"""
         return QRect(self.image_label.pos(), self.image_label.size())
 
-
     def _on_workarea_changed(self):
         """处理工作区域变化"""
         self.setGeometry(self.screen_monitor.combined_rect)  # 更新窗口位置和大小
         logger.info(f"工作区域变化, 新联合窗口位置和大小: {self.geometry()}")
-
-
-
-    # def set_size_ratio(self, size_ratio: float):
-    #     self.size_ratio = size_ratio
 
     def set_image(self, pixmap=None, img_meta: ImageMeta = None, transform_flag: bool = None, offset: QPoint = None):
         """设置主图片"""
@@ -133,7 +136,6 @@ class FollowAndDragWidget(QWidget):
             new_offset.setX(right_screen.screen_rect.right() - config.anchor_pos.x())
         return new_offset
 
-
     def adjust_offset_screen_connect(self, offset: QPoint, cur_anchor_pos: QPoint):
         """调整偏移量，实现循环屏幕效果"""
         new_offset = QPoint(offset)
@@ -159,10 +161,10 @@ class FollowAndDragWidget(QWidget):
 
     def img_move_by_offset(self, offset: QPoint):
         """根据偏移量移动图片,同时更新锚点坐标"""
-        if config.screen_connect_enabled: # 循环屏幕
-            new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos) # 循环屏幕
+        if config.screen_connect_enabled:  # 循环屏幕
+            new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos)  # 循环屏幕
         else:
-            new_offset = self.adjust_offset(offset, config.anchor_pos) # 普通移动，确保不会超出本屏幕
+            new_offset = self.adjust_offset(offset, config.anchor_pos)  # 普通移动，确保不会超出本屏幕
 
         self.image_label.move(self.image_label.pos() + new_offset)
         config.anchor_pos += new_offset

@@ -116,19 +116,27 @@ class SettingsDialog(QDialog):
         coordinate_info = QLabel("坐标说明：@=全局坐标，无@=窗口相对坐标", self)
         coordinate_info.setStyleSheet("font-weight: bold; color: #666;")
         layout.addWidget(coordinate_info)
-        layout.addSpacing(10)  # 添加一点间距
 
+        layout.addSpacing(10)  # 添加一点间距
         # 窗口信息
         self.widget_rect_label = QLabel("@窗口位置尺寸: --", self)
         layout.addWidget(self.widget_rect_label)
+
+        # 图片模式
+        self.img_mode_label = QLabel("图片模式: --", self)
+        layout.addWidget(self.img_mode_label)
+
+        layout.addSpacing(10)  # 添加一点间距
         # 屏幕信息
         self.screen_rect_label = QLabel("屏幕位置尺寸: --", self)
         layout.addWidget(self.screen_rect_label)
 
+        layout.addSpacing(10)  # 添加一点间距
         # 鼠标位置
         self.mouse_pos_label = QLabel("鼠标位置: --", self)
         layout.addWidget(self.mouse_pos_label)
 
+        layout.addSpacing(10)  # 添加一点间距
         # 图片信息
         self.img_rect_label = QLabel("图片位置尺寸: --", self)
         layout.addWidget(self.img_rect_label)
@@ -141,6 +149,7 @@ class SettingsDialog(QDialog):
         self.img_size_ratio_label = QLabel("图片缩放比例(base,ratio): --", self)
         layout.addWidget(self.img_size_ratio_label)
 
+        layout.addSpacing(10)  # 添加一点间距
         # 放大功能的等待时间
         self.bigger_wait_label = QLabel(f"变大等待时间: --", self)
         layout.addWidget(self.bigger_wait_label)
@@ -167,6 +176,11 @@ class SettingsDialog(QDialog):
                     self.screen_rect_label.setText(
                         f"屏幕位置尺寸: \n{screens_workarea_str}"
                     )
+                    # 图片模式
+                    self.img_mode_label.setText(
+                        f"图片模式: {self.parent.mode_manager.get_current_mode_name()}"
+                    )
+
                     self.mouse_pos_label.setText(
                         f"鼠标位置: {point_to_tuple(self.parent.get_cursor_pos())}"
                     )
@@ -175,7 +189,8 @@ class SettingsDialog(QDialog):
                     )
                     bigger_time = self.parent.size_growing_controller.get_wait_elapsed_time()  # 毫秒
                     self.bigger_wait_label.setText(
-                        f"变大等待时间: {int(bigger_time / (1000))}秒/{int(config.bigger_wait_time / (1000))}秒"
+                        f"变大等待时间: {int(bigger_time / (1000))}秒/{int(config.bigger_wait_time / (1000))}秒，"
+                        f"{int(bigger_time / (60 * 1000))}分钟/{int(config.bigger_wait_time / (60 * 1000))}分钟"
                     )
 
             self.img_anchor_label.setText(

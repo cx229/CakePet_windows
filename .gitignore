@@ -7,3 +7,8 @@ logs/
 # 打包
 dist/
 build/
+main.spec
+version/
+
+# 配置文件
+config.yaml

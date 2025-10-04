@@ -4,9 +4,8 @@ from typing import Optional
 from PyQt5.QtWidgets import QWidget
 
 from configs import config
-from image_modes import  NextChangeMode,modes_map
+from image_modes import NextChangeMode, modes_map, ImagesMode
 from utils.log_util import logger
-
 
 
 class ModeManager:
@@ -16,7 +15,7 @@ class ModeManager:
         self.widget = widget
         # self.current_mode = None
 
-        self.cur_mode: Optional[NextChangeMode] = None
+        self.cur_mode: Optional[ImagesMode] = None
         config.mode_name_changed.connect(self._handle_mode_change)
 
     def _handle_mode_change(self, sender, value: str):
@@ -33,6 +32,10 @@ class ModeManager:
     def get_current_mode_name(self) -> str:
         """获取当前模式名称"""
         return config.mode_name
+
+    def get_current_mode(self) -> Optional[ImagesMode]:
+        """获取当前模式"""
+        return self.cur_mode
 
     def set_mode(self, mode_name: str):
         """设置当前模式"""

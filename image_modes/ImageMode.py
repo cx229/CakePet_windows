@@ -6,6 +6,8 @@ from utils.log_util import logger
 
 
 class ImageMode(ABC):
+    title: str = "图片类"
+
     def __init__(self, widget: QWidget):
         self.widget = widget
 

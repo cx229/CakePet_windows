@@ -22,22 +22,25 @@ class ImagesMode(TimerNextChange):
     图片循环播放
     定时切换下一个模式
     """
+    title: str = "动图类"
 
     @dataclass
     class ImageConf:
         img_meta: ImageMeta
-        next: Optional['ImageConf'] = None
+        next_index: Optional['ImageConf'] = None
         duration: Union[int, Callable[[], int]] = 0  # 可以是 int 或返回 int 的 callable
         offset: QPoint = field(default_factory=lambda: QPoint(0, 0))
 
         def __post_init__(self):
             self.img: QPixmap = load_img(self.img_meta.path)
 
+
     def __init__(self, widget: QWidget):
         super().__init__(widget)
         self.widget: 'FollowAndDragWidget' = widget
         self.confs: Dict[int, ImagesMode.ImageConf] = {}
         self.transform_flag: bool = False
+        self.gravity_enable = True  # 图片收到重力影响
 
         self.index = 1
         self.image_series_timer = QTimer(self.widget)  # 图片系列变化定时器
@@ -46,6 +49,7 @@ class ImagesMode(TimerNextChange):
     def start(self):
         super().start()
         self.index = 1
+        config.gravity_enable = self.gravity_enable
         self.update_image_series()
 
     def restart(self):
@@ -55,15 +59,18 @@ class ImagesMode(TimerNextChange):
 
     def stop(self):
         super().stop()
+        config.gravity_enable = self.gravity_enable
         self.image_series_timer.stop()
 
-    def update_image_series(self):
-        if self.index is None: # 没有下一张图片，切换到下一个模式
+    def update_image_series(self, index: int = None):
+        if index is None:
+            index = self.index
+        if index is None:  # 没有下一张图片，切换到下一个模式
             self.change_mode()
-        elif self.index in self.confs:
-            conf = self.confs[self.index]
+        elif index in self.confs:
+            conf = self.confs[index]
             self.update_widget_image(conf)
-            self.index = conf.next
+            self.index = conf.next_index
 
             if conf.duration:
                 duration = conf.duration() if callable(conf.duration) else conf.duration

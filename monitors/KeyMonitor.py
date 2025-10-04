@@ -44,7 +44,6 @@ class KeyMonitor:
             self.listener = keyboard.Listener(
                 on_press=self._on_press, on_release=self._on_release)
             self.listener.start()  # 非阻塞启动
-            print("键盘监听已启动")
 
     def stop(self):
         """停止监听线程"""

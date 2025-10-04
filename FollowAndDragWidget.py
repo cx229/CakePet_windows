@@ -91,6 +91,8 @@ class FollowAndDragWidget(QWidget):
     def set_image(self, pixmap=None, img_meta: ImageMeta = None, transform_flag: bool = None, offset: QPoint = None):
         """设置主图片"""
         pixmap = self.pixmap = pixmap or self.pixmap  # 如果没有提供新的pixmap，使用历史记录
+        # print(f"anchor,{img_meta.anchor if img_meta else None}.{self.img_meta.anchor if self.img_meta else None}")
+
         img_meta = self.img_meta = img_meta or self.img_meta  # 如果没有提供新的img_meta，使用历史记录
         transform_flag = self.transform_flag = transform_flag if transform_flag is not None else self.transform_flag  # 如果没有提供新的transform_flag，使用历史记录
         offset = QPoint(offset) if offset else QPoint(0, 0)

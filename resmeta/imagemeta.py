@@ -16,6 +16,8 @@ class ImageMeta:
     path: str
     anchor_x: Optional[int] = field(default=None, repr=False)  # 自定义水平锚点
     anchor_y: Optional[int] = field(default=None, repr=False)  # 自定义垂直锚点
+    anchor_dx: Optional[int] = field(default=0, repr=False)  # 自定义水平偏移
+    anchor_dy: Optional[int] = field(default=0, repr=False)  # 自定义垂直偏移
     size_r: float = field(default=1.0)  # 缩放比例
 
     def __post_init__(self):
@@ -48,7 +50,7 @@ class ImageMeta:
     @property
     def anchor(self) -> QPoint:
         """获取锚点坐标（自动处理首次计算）"""
-        return QPoint(*self._calculate_anchor())
+        return QPoint(*self._calculate_anchor()) + QPoint(self.anchor_dx, self.anchor_dy)
 
     @property
     def size(self) -> QSize:
@@ -115,8 +117,22 @@ class Images:
         S1 = ImageMeta("jump_down1", "img/jump_down-1.png")
         S2 = ImageMeta("jump_down2", "img/jump_down-2.png")
         S3 = ImageMeta("jump_down3", "img/jump_down-3.png")
+    class PullFish(Enum):  # 拉鱼
+        S1 = ImageMeta("pull_fish1", "img/pull_fish-1.png")
+        S2 = ImageMeta("pull_fish2", "img/pull_fish-2.png")
+        S3 = ImageMeta("pull_fish3", "img/pull_fish-3.png")
+        S4 = ImageMeta("pull_fish4", "img/pull_fish-4.png")
+        S5 = ImageMeta("pull_fish5", "img/pull_fish-5.png")
+        S6 = ImageMeta("pull_fish6", "img/pull_fish-6.png")
+        S7 = ImageMeta("pull_fish7", "img/pull_fish-7.png")
 
+    class Wriggle(Enum):  # 蠕动
+        S1 = ImageMeta("wriggle1", "img/wriggle-1.png")
+        S2 = ImageMeta("wriggle2", "img/wriggle-2.png")
 
+    class ProbeHead(Enum):  # 探头
+        S1 = ImageMeta("probe_head1", "img/probe_head-1.png",anchor_y=113)
+        S2 = ImageMeta("probe_head2", "img/probe_head-2.png",anchor_y=113)
 #
 # 使用示例
 if __name__ == "__main__":

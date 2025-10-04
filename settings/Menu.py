@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QMenu, QAction, QDialog, QVBoxLayout,
                              QSlider, QCheckBox, QPushButton, QMessageBox,
                              QHBoxLayout, QLabel, QApplication)
 from configs import config
+import image_modes
 from settings.SettingsDialog import SettingsDialog
 from utils.log_util import logger
 from utils.widget_util import signal_blocker
@@ -19,7 +20,9 @@ class Menu(QMenu):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+
         self._init_actions()
+        self._init_img_mode_submenu()
         self._connect_signals()
 
     def _init_actions(self):
@@ -49,6 +52,10 @@ class Menu(QMenu):
         self.click_through_action = QAction("点击穿透", self.parent, checkable=True)
         self.click_through_action.setChecked(config.click_through_enabled)
         self.addAction(self.click_through_action)
+
+        # 创建静态子菜单
+        self.img_mode_submenu = QMenu("触发行为", self)
+        self.addMenu(self.img_mode_submenu)
 
         # 设置菜单
         self.settings_action = QAction("设置", self.parent)
@@ -159,3 +166,17 @@ class Menu(QMenu):
         except Exception as e:
             logger.error(f"显示设置对话框错误: {traceback.format_exc()}")
             QMessageBox.critical(self, "错误", f"无法打开设置窗口: {str(e)}")
+
+    def _on_img_mode_clicked(self, img_mode: image_modes.ImagesMode):
+        """处理子菜单项点击事件"""
+        logger.info(f"触发指定图片模式: {img_mode.name()}-{img_mode.title}")
+        config.mode_name = img_mode.name()
+
+    def _init_img_mode_submenu(self):
+        """初始化图片模式子菜单"""
+
+        modes = image_modes.modes_standby_fix + image_modes.modes_standby_move
+        for item in modes:
+            action = QAction(item.title, self.img_mode_submenu)
+            action.triggered.connect(lambda _, x=item: self._on_img_mode_clicked(x))
+            self.img_mode_submenu.addAction(action)

@@ -41,7 +41,10 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
         return self.workarea_infos
 
     def get_screens_workarea_tuple_list(self) -> list[str]:
-        return [f"屏幕 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(self.workarea_infos)]
+        return [f"屏幕工作区域 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(self.workarea_infos)]
+
+    def get_screens_tuple_list(self):
+        return [f"屏幕 {i}: {(screen.screen_rect.getRect(),screen.work_rect.getRect())}" for i, screen in enumerate(self.workarea_infos)]
 
     def _setup_dpi_awareness(self):
         try:
@@ -102,9 +105,10 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
 
         ctypes.windll.user32.EnumDisplayMonitors(None, None, _monitor_callback, 0)
         if new_state != self._last_state:
-            logger.info(f"屏幕变化，infos：{new_state}")
             self._last_state = new_state
             self.update_workarea_infos(new_state)
+            logger.info(f"屏幕变化，联合矩阵：{self.combined_rect.getRect()}")
+            logger.info(f"屏幕变化，屏幕列表：{self.get_screens_tuple_list()}")
 
             self.workarea_changed.emit(self.workarea_infos)
 
@@ -117,7 +121,6 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
         for screen in new_state:
             combined = combined.united(screen.screen_rect)
         screen_infos = [f"屏幕 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(new_state)]
-        print(f"联合矩形: {combined.getRect()},screen_infos:{screen_infos}")
         # 然后计算每个屏幕相对于联合矩形的偏移量
         for screen in new_state:
             screens_info.append(WorkAreaInfo(
@@ -136,7 +139,6 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
             ))
         self.workarea_infos = screens_info
         self.combined_rect = combined
-        print(f"联合矩形: {combined.getRect()},screen_infos:{self.get_screens_workarea_tuple_list()}")
 
     def nativeEventFilter(self, eventType, message):
         msg = wintypes.MSG.from_address(message.__int__())

@@ -99,6 +99,7 @@ class Config(BaseObservable):
 
     throw_follow_enabled: bool = None
     is_throw_follow = False  # 是否正在下落
+    gravity_enable: bool = True  # 是否开启重力功能
     throw_follow_acceleration = QPointF(0, 0.02)  # 抛掷重力速度, 单位: 像素/s2
     throw_follow_radio = QPointF(1, 0.8)  # 抛掷的初速度与重力速度的比例
     throw_follow_speed = QPointF(0, 0)  # 抛掷速度，单位: 像素/s

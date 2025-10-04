@@ -29,7 +29,7 @@ def get_random_next_mode_name(current_mode_name: str, available_modes_name: list
 
 class NextChangeMode(ImageMode):
     """切换下一个模式"""
-
+    title: str = "切换类"
     def __init__(self, widget: QWidget):
         super().__init__(widget)
         self.next_mode_name = get_random_next_mode_name(self.name())
@@ -43,7 +43,7 @@ class NextChangeMode(ImageMode):
 
 class TimerNextChange(NextChangeMode):
     """定时器下一个行为"""
-
+    title: str = "定时切换类"
     def __init__(self, widget: QWidget, time_next_enabled: bool = True, interval_min=3000, interval_max=10000, prob=0.5):
         super().__init__(widget)
         self.time_next_enabled = time_next_enabled  # 是否使用随机间隔时间

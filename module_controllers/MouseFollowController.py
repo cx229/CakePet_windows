@@ -197,7 +197,9 @@ class MouseFollowController(ModuleController):
         """
         检查是否掉落
         """
-        if config.anchor_pos.y() != get_cur_work_bottom(config.anchor_pos, self.widget.screen_monitor):
+        cur_work_bottom = get_cur_work_bottom(config.anchor_pos, self.widget.screen_monitor)
+        # print(f"config.anchor_pos.y():{config.anchor_pos.y()},cur_work_bottom:{cur_work_bottom},{config.anchor_pos.y() != cur_work_bottom}")
+        if config.anchor_pos.y() != cur_work_bottom and config.gravity_enable:
             self.throw_begin()
 
     def follow_update(self):
@@ -254,6 +256,21 @@ class MouseFollowController(ModuleController):
                 # 记录上一次的移动位移量
                 self.drag_move_offset_last = self.drag_move_offset
                 self.drag_move_offset = new_pos - now_pos
+                # 根据移动量判断 drag的具体序号
+                drag_offset =(self.drag_move_offset_last + self.drag_move_offset) /2
+                mode = self.widget.mode_manager.get_current_mode()
+                if isinstance(mode,image_modes.DragFollowMode):
+                    index=None
+                    if drag_offset.x()<=-10 :
+                        index=6
+                    elif drag_offset.x() <= -5:
+                        index = 4
+                    elif drag_offset.x()>=10:
+                        index=5
+                    elif drag_offset.x()>=5:
+                        index=3
+                    if index is not None:
+                        mode.update_image_series(index)
                 self.widget.img_move_by_offset(self.drag_move_offset)  # 拖动图片
                 self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
         except Exception as e:

@@ -8,15 +8,19 @@ from image_modes.ImageMode import ImageMode
 from utils.log_util import logger
 
 
-def get_random_next_mode_name(current_mode: str, available_modes_name: list = None):
+def get_random_next_mode_name(current_mode_name: str, available_modes_name: list = None):
     """获取随机下一个模式名称"""
-    from image_modes import modes_name_standby
     if available_modes_name is None:  # 没有指定模式列表时，使用所有待机模式
-        available_modes_name = [name for name in modes_name_standby if name != current_mode]  # 排除当前模式
+        from image_modes import modes_standby_fix, modes_standby_move
+        modes = modes_standby_fix  # 固定待机模式
+        if not config.mouse_follow_enabled:  # 如果不是鼠标跟随模式，则添加移动模式
+            modes += modes_standby_move
+        modes_name = [str(m.name()) for m in modes]
+        available_modes_name = [name for name in modes_name if name != current_mode_name]  # 排除当前模式
     if available_modes_name:
         next_mode_name = random.choice(available_modes_name)  # 随机选择下一个模式
     else:
-        next_mode_name = current_mode
+        next_mode_name = current_mode_name
     return next_mode_name
 
 
@@ -37,21 +41,21 @@ class NextChangeMode(ImageMode):
 class TimerNextChange(NextChangeMode):
     """定时器下一个行为"""
 
-    def __init__(self, widget: QWidget, interval_min=3000, interval_max=10000, prob=0.5):
+    def __init__(self, widget: QWidget, time_next_enabled: bool = True, interval_min=3000, interval_max=10000, prob=0.5):
         super().__init__(widget)
+        self.time_next_enabled = time_next_enabled  # 是否使用随机间隔时间
         self.change_interval_min = interval_min  # 随机间隔时间（毫秒）
         self.change_interval_max = interval_max  # 随机间隔时间（毫秒）
         self.change_prob = prob  # 随机概率（0-1之间）
         self.timer = QTimer(self.widget)  # 定时器
-        self.timer.timeout.connect(self.time_next)  # 连接超时信号到下一个方法
+        if self.time_next_enabled:
+            self.timer.timeout.connect(self.time_next)  # 连接超时信号到下一个方法
 
     def get_interval(self):
         """获取随机间隔时间"""
         mn_interval = min(self.change_interval_min, self.change_interval_max)
         mx_interval = max(self.change_interval_min, self.change_interval_max)
-        # self.timer.setInterval()
         return random.randint(mn_interval, mx_interval)
-        # self.timer.start(random.randint(mn_interval, mx_interval))  # 启动定时器
 
     def time_next(self):
         """概率下一个"""

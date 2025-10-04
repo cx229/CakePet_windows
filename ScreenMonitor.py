@@ -7,6 +7,8 @@ import win32con
 import win32gui
 from ctypes import wintypes
 
+from utils.log_util import logger
+
 
 @dataclass
 class WorkAreaInfo:
@@ -22,30 +24,24 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
         self._parent_widget = parent_widget
         self._setup_dpi_awareness()
         self._setup_event_filter()
-        self._last_state = []
+
+        self._last_state = []  # 表示最新的工作区域信息
+        self.workarea_infos: list[WorkAreaInfo] = []  # 表示所有工作区域信息,基于联合矩阵
+        self.combined_rect = QRect()  # 表示所有工作区域的联合矩形区域
+
         self._check_workarea_changes()  # 初始化时获取一次状态
 
-        # 获取最左的工作区域，如果小于当前锚点x坐标，则返回最左工作区域底部坐标
-        # left_work_area = min(work_area_infos, key=lambda x: x.work_rect.left())
-        # if left_work_area.work_rect.left() >= cur_anchor_pos.x():
-        #     logger.info(f"未找到包含锚点 {cur_anchor_pos} 的工作区域，返回最左工作区域底部坐标: {left_work_area.work_rect.bottom()}")
-        #
-        #     return left_work_area.work_rect.bottom()
-        #
-        # # 如果最右的工作区域也小于当前锚点x坐标，则返回最右工作区域底部坐标
-        # right_work_area = max(work_area_infos, key=lambda x: x.work_rect.right())
-        # if right_work_area.work_rect.right() <= cur_anchor_pos.x():
-        #     logger.info(f"未找到包含锚点 {cur_anchor_pos} 的工作区域，返回最右工作区域底部坐标: {right_work_area.work_rect.bottom()}")
-        #     return right_work_area.work_rect.bottom()
-
     def get_left_screen(self) -> WorkAreaInfo:
-        return min(self._last_state, key=lambda x: x.work_rect.left())
+        return min(self.workarea_infos, key=lambda x: x.work_rect.left())
 
     def get_right_screen(self) -> WorkAreaInfo:
-        return max(self._last_state, key=lambda x: x.work_rect.right())
+        return max(self.workarea_infos, key=lambda x: x.work_rect.right())
 
     def get_screens(self) -> list[WorkAreaInfo]:
-        return self._last_state
+        return self.workarea_infos
+
+    def get_screens_workarea_tuple_list(self) -> list[str]:
+        return [f"屏幕 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(self.workarea_infos)]
 
     def _setup_dpi_awareness(self):
         try:
@@ -87,10 +83,6 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
                             ctypes.POINTER(wintypes.RECT), ctypes.c_double)
         def _monitor_callback(hmonitor, hdc, lprect, lparam):
             info = win32api.GetMonitorInfo(hmonitor)
-            # new_state.append(WorkAreaInfo(
-            #     screen_rect=QRect(*info['Monitor']),
-            #     work_rect=QRect(*info['Work'])
-            # ))
             new_state.append(WorkAreaInfo(
                 screen_rect=QRect(
                     info['Monitor'][0],  # left
@@ -109,10 +101,42 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
             return 1
 
         ctypes.windll.user32.EnumDisplayMonitors(None, None, _monitor_callback, 0)
-
         if new_state != self._last_state:
+            logger.info(f"屏幕变化，infos：{new_state}")
             self._last_state = new_state
-            self.workarea_changed.emit(new_state)
+            self.update_workarea_infos(new_state)
+
+            self.workarea_changed.emit(self.workarea_infos)
+
+    def update_workarea_infos(self, new_state: list[WorkAreaInfo]):
+        """更新所有工作区域信息"""
+        combined = QRect()
+        screens_info = []
+
+        # 首先计算联合矩形
+        for screen in new_state:
+            combined = combined.united(screen.screen_rect)
+        screen_infos = [f"屏幕 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(new_state)]
+        print(f"联合矩形: {combined.getRect()},screen_infos:{screen_infos}")
+        # 然后计算每个屏幕相对于联合矩形的偏移量
+        for screen in new_state:
+            screens_info.append(WorkAreaInfo(
+                screen_rect=QRect(
+                    screen.screen_rect.x() - combined.x(),
+                    screen.screen_rect.y() - combined.y(),
+                    screen.screen_rect.width(),
+                    screen.screen_rect.height()
+                ),
+                work_rect=QRect(
+                    screen.work_rect.x() - combined.x(),
+                    screen.work_rect.y() - combined.y(),
+                    screen.work_rect.width(),
+                    screen.work_rect.height()
+                )
+            ))
+        self.workarea_infos = screens_info
+        self.combined_rect = combined
+        print(f"联合矩形: {combined.getRect()},screen_infos:{self.get_screens_workarea_tuple_list()}")
 
     def nativeEventFilter(self, eventType, message):
         msg = wintypes.MSG.from_address(message.__int__())
@@ -120,7 +144,8 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
             self._check_workarea_changes()
         return False, 0
 
-def get_cur_work_bottom(anchor_pos:QPoint, screen_monitor:ScreenMonitor):
+
+def get_cur_work_bottom(anchor_pos: QPoint, screen_monitor: ScreenMonitor):
     """
     获取当前工作区域的底部坐标
     1. 首先尝试根据锚点的x,y坐标找到完全包含它的屏幕
@@ -163,10 +188,11 @@ if __name__ == "__main__":
             # self.screen_monitor._check_workarea_changes()
 
         def handle_display_change(self, screens):
-            print("\n=== 显示器配置变化 ===")
+            print("\n\n=== 显示器配置变化 ===")
             for i, screen in enumerate(screens):
                 print(f"显示器 {i + 1}: 物理区域 {screen.screen_rect.getRect()}")
                 print(f"显示器 {i + 1}: 工作区域 {screen.work_rect.getRect()}")
+            print("\n\n")
 
 
     import sys

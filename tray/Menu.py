@@ -1,7 +1,7 @@
 import traceback
 from PyQt5.QtWidgets import (QMenu, QAction, QDialog, QVBoxLayout,
                              QSlider, QCheckBox, QPushButton, QMessageBox,
-                             QHBoxLayout, QLabel)
+                             QHBoxLayout, QLabel, QApplication)
 from configs import config
 from tray.SettingsDialog import SettingsDialog
 from utils.log_util import logger
@@ -61,7 +61,7 @@ class Menu(QMenu):
         self.bigger_action.toggled.connect(self._on_bigger_toggled)
 
         self.settings_action.triggered.connect(self._show_settings)  # 设置
-        self.exit_action.triggered.connect(self.parent.close)  # 退出
+        self.exit_action.triggered.connect(QApplication.instance().quit)  # 直接退出应用
 
         # # 配置变更信号
         config.drag_follow_enabled_changed.connect(self._update_drag_action)
@@ -130,7 +130,8 @@ class Menu(QMenu):
         """显示设置对话框"""
         try:
             dialog = SettingsDialog(self.parent)
-            dialog.exec_()
+            dialog.show()  # 使用 show() 而不是 exec_()
+            # dialog.exec_()
         except Exception as e:
             logger.error(f"显示设置对话框错误: {traceback.format_exc()}")
             QMessageBox.critical(self, "错误", f"无法打开设置窗口: {str(e)}")

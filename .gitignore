@@ -3,3 +3,7 @@
 
 dev/
 logs/
+
+# 打包
+dist/
+build/

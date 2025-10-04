@@ -1,7 +1,7 @@
 # from turtle import config_dict
 from types import SimpleNamespace
 from typing import Dict, Any, TYPE_CHECKING
-
+import yaml
 from PyQt5.QtCore import QPoint, QPointF
 
 
@@ -83,26 +83,76 @@ class BaseObservable(metaclass=ObservableMeta):
 
 
 class Config(BaseObservable):
+    screen_connect_enabled: bool = None  # 是否开启屏幕连接功能
+
     mode_name = "base"
+    size_ratio: float = 1.0  # 当前大小比例
+    size_ratio_base: float = None  # 大小比例基数
+    standard_anchor_pos = QPoint(64, 128)  # 标准锚点坐标
 
     follow_update_interval = 3  # 跟随更新间隔（毫秒），不论什么模式，指的是定时器间隔
 
-    drag_follow_enabled = True  # 是否开启拖动功能
+    drag_follow_enabled: bool = None  # 是否开启拖动功能
     is_drag_follow = False  # 是否正在拖动
 
-    throw_follow_enabled = True
+    throw_follow_enabled: bool = None
     is_throw_follow = False  # 是否正在下落
     throw_follow_acceleration = QPointF(0, 0.02)  # 抛掷重力速度, 单位: 像素/s2
     throw_follow_radio = QPointF(1, 0.8)  # 抛掷的初速度与重力速度的比例
     throw_follow_speed = QPointF(0, 0)  # 抛掷速度，单位: 像素/s
 
-    mouse_follow_enabled = True  # 是否开启跟随鼠标
+    mouse_follow_enabled: bool = None  # 是否开启跟随鼠标
     is_mouse_follow = False  # 是否正在跟随鼠标
     mouse_follow_speed = 5  # 每次的跟随，移动的像素点长度，跟随速度，单位:像素/s
 
     anchor_pos = QPoint(500, 500)  # 锚点坐标
 
+    bigger_enabled: bool = None  # 是否开启放大功能
     bigger_flag = False  # 放大的标志位
+    bigger_wait_time: int = None  # 等待时间，单位: 毫秒
+    bigger_max_size_ratio: float = None  # 最大放大比例
 
 
+config_path = "config.yaml"
 config = Config()
+
+
+def load_config():
+    with open(config_path, 'r') as f:
+        yaml_config = yaml.safe_load(f) or {}
+        yaml_config = {k: v for k, v in yaml_config.items() if v is not None}
+        if yaml_config:
+            config.size_ratio_base = yaml_config.get("size_ratio_base", 1.0)
+            config.screen_connect_enabled = yaml_config.get("screen_connect_enabled", True)
+            config.drag_follow_enabled = yaml_config.get("drag_follow_enabled", True)
+            config.throw_follow_enabled = yaml_config.get("throw_follow_enabled", True)
+            config.mouse_follow_enabled = yaml_config.get("mouse_follow_enabled", True)
+            config.bigger_enabled = yaml_config.get("bigger_enabled", True)
+            config.bigger_wait_time = yaml_config.get("bigger_wait_time", 45 * 60 * 1000)
+            config.bigger_max_size_ratio = yaml_config.get("bigger_max_size_ratio", 10.0)
+
+
+def save_config(sender, value):
+    with open(config_path, 'w', encoding='utf-8') as f:
+        yaml_config = {
+            "size_ratio_base": config.size_ratio_base,
+            "screen_connect_enabled": config.screen_connect_enabled,
+            "drag_follow_enabled": config.drag_follow_enabled,
+            "throw_follow_enabled": config.throw_follow_enabled,
+            "mouse_follow_enabled": config.mouse_follow_enabled,
+            "bigger_enabled": config.bigger_enabled,
+            "bigger_wait_time": config.bigger_wait_time,
+            "bigger_max_size_ratio": config.bigger_max_size_ratio,
+        }
+        yaml.safe_dump(yaml_config, f, default_flow_style=False, sort_keys=False)
+
+
+load_config()
+config.size_ratio_base_changed.connect(save_config)
+config.screen_connect_enabled_changed.connect(save_config)
+config.drag_follow_enabled_changed.connect(save_config)
+config.throw_follow_enabled_changed.connect(save_config)
+config.mouse_follow_enabled_changed.connect(save_config)
+config.bigger_enabled_changed.connect(save_config)
+config.bigger_wait_time_changed.connect(save_config)
+config.bigger_max_size_ratio_changed.connect(save_config)

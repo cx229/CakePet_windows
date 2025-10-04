@@ -2,8 +2,8 @@ import traceback
 from typing import Optional
 
 from PyQt5.QtWidgets import (QApplication, QLabel, QWidget)
-from PyQt5.QtCore import Qt, QPoint, QRect
-from PyQt5.QtGui import QPixmap, QTransform
+from PyQt5.QtCore import Qt, QPoint, QRect, QPointF
+from PyQt5.QtGui import QPixmap, QTransform, QCursor
 
 from ScreenMonitor import ScreenMonitor
 from image_modes.ModeManager import ModeManager
@@ -31,16 +31,11 @@ class FollowAndDragWidget(QWidget):
             )
             self.setAttribute(Qt.WA_TranslucentBackground)  # 透明背景
 
-            # 获取所有显示器的虚拟大桌面区域
-            self.desktop_rect = self.get_combined_screen_geometry()
-
-            self.setGeometry(self.desktop_rect)  # 设置窗口覆盖所有显示器
-
             # 鼠标交互相关变量
             self.drag_offset = QPoint()  # 拖动偏移量
 
             # 加载主图片
-            self.size_ratio = 1
+            # self.size_ratio = 1
             self.pixmap: Optional[QPixmap] = None  # 当前图片
             self.img_meta: Optional[ImageMeta] = None  # 当前图片的元数据
             self.transform_flag = False
@@ -50,6 +45,9 @@ class FollowAndDragWidget(QWidget):
             # self.image_label.setStyleSheet("background-color: red;")  # 红色背景 # DEV
 
             self.screen_monitor = ScreenMonitor(self)  # 屏幕监控器
+            self.setGeometry(self.screen_monitor.combined_rect)  # 获取所有显示器的虚拟大桌面区域, 设置窗口覆盖所有显示器
+            self.screen_monitor.workarea_changed.connect(self._on_workarea_changed)
+
             self.mode_manager = ModeManager(self)
             self.follow_controller = MouseFollowController(self)
 
@@ -68,29 +66,37 @@ class FollowAndDragWidget(QWidget):
         self.size_growing_controller.start()
         self.follow_controller.start()
 
-    def get_combined_screen_geometry(self):
-        """获取所有显示器的联合矩形区域"""
-        rect = QRect()
-        for screen in QApplication.screens():
-            rect = rect.united(screen.geometry())
-        print(f"所有显示器的联合矩形区域: {rect}")  # 所有显示器的联合矩形区域: PyQt5.QtCore.QRect(0, 0, 5120, 1773)
-        return rect
+    def get_cursor_pos(self) -> QPointF:
+        """获取当前鼠标位置，相对窗口坐标"""
+        return QPointF(QCursor.pos() - self.pos())
 
-    def set_size_ratio(self, size_ratio: float):
-        self.size_ratio = size_ratio
+    def get_img_rect(self) -> QRect:
+        """获取当前图片位置，相对窗口坐标"""
+        return QRect(self.image_label.pos(), self.image_label.size())
 
-    def set_image(self, pixmap=None, img_meta: ImageMeta = None, transform_flag: bool = None):
+
+    def _on_workarea_changed(self):
+        """处理工作区域变化"""
+        self.setGeometry(self.screen_monitor.combined_rect)  # 更新窗口位置和大小
+        logger.info(f"工作区域变化, 新联合窗口位置和大小: {self.geometry()}")
+
+
+
+    # def set_size_ratio(self, size_ratio: float):
+    #     self.size_ratio = size_ratio
+
+    def set_image(self, pixmap=None, img_meta: ImageMeta = None, transform_flag: bool = None, offset: QPoint = None):
         """设置主图片"""
         pixmap = self.pixmap = pixmap or self.pixmap  # 如果没有提供新的pixmap，使用历史记录
         img_meta = self.img_meta = img_meta or self.img_meta  # 如果没有提供新的img_meta，使用历史记录
         transform_flag = self.transform_flag = transform_flag if transform_flag is not None else self.transform_flag  # 如果没有提供新的transform_flag，使用历史记录
-
+        offset = QPoint(offset) if offset else QPoint(0, 0)
         if not pixmap or not img_meta:
             return
 
         image_anchor = img_meta.anchor
         image_size_r = img_meta.size_r
-        cur_size_r = self.size_ratio / image_size_r
+        cur_size_r = config.size_ratio_base * config.size_ratio / image_size_r
 
         scaled_pixmap = pixmap.scaled(
             pixmap.size() * cur_size_r,
@@ -102,31 +108,36 @@ class FollowAndDragWidget(QWidget):
         if transform_flag:
             scaled_pixmap = scaled_pixmap.transformed(QTransform().scale(-1, 1))  # 水平翻转
             scaled_anchor = QPoint(scaled_pixmap.width() - scaled_anchor.x(), scaled_anchor.y())
+            offset.setX(-offset.x())  # 水平翻转后，x轴偏移量取相反数
 
         self.image_label.setPixmap(scaled_pixmap)
         self.image_label.resize(scaled_pixmap.size())  # 调整图片标签大小为缩放后的图片大小
 
-
+        new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos)
+        config.anchor_pos += new_offset
         new_pos = config.anchor_pos - scaled_anchor
+        # print(f"设置图片: {img_meta.path}, 大小比例: {self.size_ratio}, 锚点: {scaled_anchor}, 偏移量: {new_offset}, offset: {offset}")
+
         self.image_label.move(new_pos)
 
     def adjust_offset(self, offset: QPoint, cur_anchor_pos: QPoint):
         """调整偏移量，确保图片不会超出桌面范围"""
-        target_anchor_pos = cur_anchor_pos + offset
+        new_offset = QPoint(offset)
+        target_anchor_pos = cur_anchor_pos + new_offset
         left_screen = self.screen_monitor.get_left_screen()
         if target_anchor_pos.x() < left_screen.screen_rect.left():
-            offset.setX(left_screen.screen_rect.left() - config.anchor_pos.x())
+            new_offset.setX(left_screen.screen_rect.left() - config.anchor_pos.x())
 
         right_screen = self.screen_monitor.get_right_screen()
         if target_anchor_pos.x() > right_screen.screen_rect.right():
-            offset.setX(right_screen.screen_rect.right() - config.anchor_pos.x())
-        return offset
+            new_offset.setX(right_screen.screen_rect.right() - config.anchor_pos.x())
+        return new_offset
 
-    # def adjust_offset_screen(self, offset: QPoint, cur_anchor_pos: QPoint):
-    #     """调整偏移量，如果是超过左边界，则从右边出现，同理超过右边界则从左边出现"""
-    def adjust_offset_screen(self, offset: QPoint, cur_anchor_pos: QPoint):
+
+    def adjust_offset_screen_connect(self, offset: QPoint, cur_anchor_pos: QPoint):
         """调整偏移量，实现循环屏幕效果"""
-        target_anchor_pos = cur_anchor_pos + offset
+        new_offset = QPoint(offset)
+        target_anchor_pos = cur_anchor_pos + new_offset
 
         # 获取左右屏幕信息
         left_screen = self.screen_monitor.get_left_screen()
@@ -136,29 +147,29 @@ class FollowAndDragWidget(QWidget):
         if target_anchor_pos.x() < left_screen.screen_rect.left():
             overflow = left_screen.screen_rect.left() - target_anchor_pos.x()
             new_x = right_screen.screen_rect.right() - overflow
-            offset.setX(new_x - cur_anchor_pos.x())
+            new_offset.setX(new_x - cur_anchor_pos.x())
 
         # 如果移出右边界，从左边界出现
         elif target_anchor_pos.x() > right_screen.screen_rect.right():
             overflow = target_anchor_pos.x() - right_screen.screen_rect.right()
             new_x = left_screen.screen_rect.left() + overflow
-            offset.setX(new_x - cur_anchor_pos.x())
+            new_offset.setX(new_x - cur_anchor_pos.x())
 
-        return offset
+        return new_offset
 
     def img_move_by_offset(self, offset: QPoint):
         """根据偏移量移动图片,同时更新锚点坐标"""
+        if config.screen_connect_enabled: # 循环屏幕
+            new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos) # 循环屏幕
+        else:
+            new_offset = self.adjust_offset(offset, config.anchor_pos) # 普通移动，确保不会超出本屏幕
 
-        # offset=self.adjust_offset(offset, config.anchor_pos)
-        offset = self.adjust_offset_screen(offset, config.anchor_pos)
-
-        self.image_label.move(self.image_label.pos() + offset)
-        config.anchor_pos += offset
+        self.image_label.move(self.image_label.pos() + new_offset)
+        config.anchor_pos += new_offset
 
     def contextMenuEvent(self, event):
         """重写右键菜单事件"""
         try:
-
             if self.tray_menu:
                 self.tray_menu.exec_(event.globalPos())
                 logger.info("用户右键点击窗口弹出菜单")

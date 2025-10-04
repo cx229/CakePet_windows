@@ -1,6 +1,8 @@
-from typing import Dict, Optional, TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Dict, Optional, TYPE_CHECKING, Union, Callable
 
-from PyQt5.QtCore import QTimer
+from Demos.mmapfile_demo import offset
+from PyQt5.QtCore import QTimer, QPointF, QPoint
 from PyQt5.QtGui import QPixmap, QCursor
 from PyQt5.QtWidgets import QWidget
 
@@ -8,11 +10,10 @@ from configs import config
 
 if TYPE_CHECKING:
     from FollowAndDragWidget import FollowAndDragWidget
-from image_modes.ChangeNextMode import  TimerNextChange
+from image_modes.ChangeNextMode import TimerNextChange
 from resmeta.imagemeta import ImageMeta
 from utils.img_uttil import load_img
 from utils.log_util import logger
-
 
 
 class ImagesMode(TimerNextChange):
@@ -22,17 +23,22 @@ class ImagesMode(TimerNextChange):
     定时切换下一个模式
     """
 
+    @dataclass
     class ImageConf:
-        def __init__(self, img_meta: ImageMeta, next, duration):
-            self.img: QPixmap = load_img(img_meta.path)
-            self.img_meta = img_meta
-            self.next = next
-            self.duration = duration
+        img_meta: ImageMeta
+        next: Optional['ImageConf'] = None
+        duration: Union[int, Callable[[], int]] = 0  # 可以是 int 或返回 int 的 callable
+        offset: QPoint = field(default_factory=lambda: QPoint(0, 0))
+
+        def __post_init__(self):
+            self.img: QPixmap = load_img(self.img_meta.path)
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
         self.widget: 'FollowAndDragWidget' = widget
         self.confs: Dict[int, ImagesMode.ImageConf] = {}
+        self.transform_flag: bool = False
+
         self.index = 1
         self.image_series_timer = QTimer(self.widget)  # 图片系列变化定时器
         self.image_series_timer.timeout.connect(self.update_image_series)
@@ -69,21 +75,8 @@ class ImagesMode(TimerNextChange):
 
     def update_widget_image(self, next_conf):
         if next_conf.img_meta:
-            self.widget.set_image(next_conf.img, next_conf.img_meta)
-
-
-class FollowTransImagesMode(ImagesMode):
-    """多图片模式，跟随鼠标是否需要镜像"""
-
-    def update_widget_image(self, next_conf):
-        """运动的情况，根据鼠标位置判断是否需要镜像"""
-        transform_flag = False
-        img = next_conf.img
-        if config.is_mouse_follow:
-            mouse_img_pos = self.widget.image_label.mapFromGlobal(QCursor.pos())
-            if mouse_img_pos.x() > self.widget.image_label.width() // 2:
-                transform_flag = True
-        self.widget.set_image(img, next_conf.img_meta, transform_flag)
-
-
-
+            if config.is_mouse_follow:
+                offset = QPoint(0, 0)
+            else:
+                offset = next_conf.offset
+            self.widget.set_image(next_conf.img, next_conf.img_meta, self.transform_flag, offset)

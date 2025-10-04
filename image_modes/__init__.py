@@ -1,19 +1,14 @@
-from typing import Optional
 
-from PyQt5.QtCore import QTimer
-
-from configs import config
 from image_modes.ChangeNextMode import NextChangeMode
 from image_modes.image_modes import *
-from utils.log_util import logger
 
-modes_standby = [SitClamMode, SitPuffedMode, WalkMode, PatHeadMode]
-modes_name_standby = [str(m.name()) for m in modes_standby]
+modes_standby_fix = [SitClamMode, SitPuffedMode, PatHeadMode] # 固定待机模式
+modes_standby_move = [WalkMode] # 移动待机模式
 
 # 模式映射,是所有模式的映射
 modes = [SitClamMode, SitPuffedMode, PatHeadMode, ShakeHeadMode,  # 坐（摸头->摇头）
          WalkMode,
-         LiftUpMode, ThrowMode, FallStandMode,  # 鼠标事件：提，(抛掷->落地）
+         DragFollowMode, ThrowFollowMode, ThrowFallStandFollowMode, MouseFollowMode  # 鼠标事件：拖拽，(抛掷->落地），鼠标跟随
          ]
 modes_map = {str(m.name()): m for m in modes}
 

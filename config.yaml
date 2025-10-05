@@ -4,6 +4,6 @@ screen_connect_enabled: true
 drag_follow_enabled: true
 throw_follow_enabled: true
 mouse_follow_enabled: false
-bigger_enabled: false
+bigger_enabled: true
 bigger_wait_time: 2700000
 bigger_max_size_ratio: 7.0

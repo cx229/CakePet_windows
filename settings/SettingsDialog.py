@@ -58,8 +58,7 @@ class SettingsDialog(QDialog):
         self.screen_connect_check.setChecked(config.screen_connect_enabled)
         layout.addWidget(self.screen_connect_check)
 
-        #
-
+        layout.addSpacing(20)  # 添加一点间距
         # 跟随速度设置
         self.speed_label = QLabel(f"跟随速度: {config.mouse_follow_speed:.1f}(默认5)", self)
         layout.addWidget(self.speed_label)
@@ -68,11 +67,7 @@ class SettingsDialog(QDialog):
         self.speed_slider.setValue(int(config.mouse_follow_speed) * 10)
         layout.addWidget(self.speed_slider)
 
-        # 变大功能开关
-        self.bigger_check = QCheckBox("启用变大功能", self)
-        self.bigger_check.setChecked(config.bigger_enabled)
-        layout.addWidget(self.bigger_check)
-
+        layout.addSpacing(20)  # 添加一点间距
         # 标准大小比例设置
         self.standard_size_ratio_label = QLabel(f"大小比例基数: {config.size_ratio_base:.1f} (默认1.0)", self)
         layout.addWidget(self.standard_size_ratio_label)
@@ -80,6 +75,12 @@ class SettingsDialog(QDialog):
         self.size_ratio_base_slider.setRange(1, 100)
         self.size_ratio_base_slider.setValue(int(config.size_ratio_base) * 10)
         layout.addWidget(self.size_ratio_base_slider)
+
+        layout.addSpacing(20)  # 添加一点间距
+        # 变大功能开关
+        self.bigger_check = QCheckBox("启用变大功能", self)
+        self.bigger_check.setChecked(config.bigger_enabled)
+        layout.addWidget(self.bigger_check)
 
         # 变大最大比例设置
         self.bigger_max_size_ratio_label = QLabel(f"变大最大比例: {config.bigger_max_size_ratio:.1f} (默认10.0)", self)
@@ -162,7 +163,6 @@ class SettingsDialog(QDialog):
         self.tray_msg_label = QLabel("托盘消息: --", self)
         layout.addWidget(self.tray_msg_label)
 
-
         layout.addStretch()  # 添加弹簧使控件靠上
         self.info_tab.setLayout(layout)
 
@@ -210,8 +210,6 @@ class SettingsDialog(QDialog):
                     self.tray_msg_label.setText(
                         f"托盘消息: {self.parent.tray_msg_controller.rect.getRect()}"
                     )
-
-
 
             self.img_anchor_label.setText(
                 f"图片锚点位置: {point_to_tuple(config.anchor_pos)}"

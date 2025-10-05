@@ -65,10 +65,10 @@ class SizeGrowingController(ModuleController):
         logger.info(f"放大时间到，开始改变大小, 放大间隔{self.change_time / 1000}秒, 步长{self.change_step}")
 
     def _bigger_start(self):
+        """ 开启放大（无视放大功能开关） """
         self.wait_timer.stop()  # 关闭等待时间
         self.change_timer.start(self.change_time)  # 开启改变时间
         self.widget.tray_msg_controller.change_text(tray_msg=TragMsgs.Event.REST.value)
-        print("开始改变大小")
 
     def _bigger_end(self):
         self.change_timer.stop()  # 关闭改变时间
@@ -89,6 +89,7 @@ class SizeGrowingController(ModuleController):
                 config.bigger_flag = False  # 关闭放大标志，触发处理
 
     def _handle_bigger_flag_value(self, sender, value):
+        """ 放大标志改变，开启放大或结束放大 """
         if value:  # 开启放大
             self._bigger_start()
         else:  # 放大结束

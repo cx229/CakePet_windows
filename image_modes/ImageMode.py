@@ -11,7 +11,6 @@ class ImageMode(ABC):
     def __init__(self, widget: QWidget):
         self.widget = widget
 
-
     def start(self):
         """启动模式"""
         logger.info(f"模式 {self.name()} 启动")
@@ -35,7 +34,3 @@ class ImageMode(ABC):
     @classmethod
     def name(cls) -> str:
         return str(cls.__name__)
-
-
-
-print(ImageMode.name())

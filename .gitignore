@@ -7,7 +7,7 @@ logs/
 # 打包
 dist/
 build/
-main.spec
+*.spec
 version/
 
 # 配置文件

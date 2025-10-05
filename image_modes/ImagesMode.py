@@ -11,7 +11,7 @@ from configs import config
 if TYPE_CHECKING:
     from FollowAndDragWidget import FollowAndDragWidget
 from image_modes.ChangeNextMode import TimerNextChange
-from resmeta.imagemeta import ImageMeta
+from resmeta.image_meta import ImageMeta
 from utils.img_uttil import load_img
 from utils.log_util import logger
 

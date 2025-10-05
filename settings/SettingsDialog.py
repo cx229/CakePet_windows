@@ -122,6 +122,10 @@ class SettingsDialog(QDialog):
         self.widget_rect_label = QLabel("@窗口位置尺寸: --", self)
         layout.addWidget(self.widget_rect_label)
 
+        # 按键信息
+        self.keyboard_info_label = QLabel("按键信息: --", self)
+        layout.addWidget(self.keyboard_info_label)
+
         # 图片模式
         self.img_mode_label = QLabel("图片模式: --", self)
         layout.addWidget(self.img_mode_label)
@@ -154,6 +158,11 @@ class SettingsDialog(QDialog):
         self.bigger_wait_label = QLabel(f"变大等待时间: --", self)
         layout.addWidget(self.bigger_wait_label)
 
+        # 托盘消息
+        self.tray_msg_label = QLabel("托盘消息: --", self)
+        layout.addWidget(self.tray_msg_label)
+
+
         layout.addStretch()  # 添加弹簧使控件靠上
         self.info_tab.setLayout(layout)
 
@@ -172,6 +181,11 @@ class SettingsDialog(QDialog):
                 )
                 from FollowAndDragWidget import FollowAndDragWidget
                 if isinstance(self.parent, FollowAndDragWidget):
+                    # 按键信息
+                    self.keyboard_info_label.setText(
+                        f"按键信息: {self.parent.key_monitor.get_pressed_keys()}"
+                    )
+
                     screens_workarea_str = "\n".join(self.parent.screen_monitor.get_screens_workarea_tuple_list())
                     self.screen_rect_label.setText(
                         f"屏幕位置尺寸: \n{screens_workarea_str}"
@@ -192,6 +206,12 @@ class SettingsDialog(QDialog):
                         f"变大等待时间: {int(bigger_time / (1000))}秒/{int(config.bigger_wait_time / (1000))}秒，"
                         f"{int(bigger_time / (60 * 1000))}分钟/{int(config.bigger_wait_time / (60 * 1000))}分钟"
                     )
+                    # 托盘消息
+                    self.tray_msg_label.setText(
+                        f"托盘消息: {self.parent.tray_msg_controller.rect.getRect()}"
+                    )
+
+
 
             self.img_anchor_label.setText(
                 f"图片锚点位置: {point_to_tuple(config.anchor_pos)}"

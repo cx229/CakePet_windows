@@ -1,4 +1,3 @@
-
 import yaml
 from PyQt5.QtCore import QPoint, QPointF
 
@@ -83,15 +82,17 @@ class BaseObservable(metaclass=ObservableMeta):
 
 
 class Config(BaseObservable):
+    """ 全局配置 """
     screen_connect_enabled: bool = None  # 是否开启屏幕连接功能
     click_through_enabled: bool = None  # 是否开启点击穿透功能
     key_ctrl_l_only: bool = False  # 监听结果，是否只有Ctrl+L按下
-
     mode_name = "base"
     size_ratio: float = 1.0  # 当前大小比例
     size_ratio_base: float = None  # 大小比例基数
     standard_anchor_pos = QPoint(64, 128)  # 标准锚点坐标
+    anchor_pos = QPoint(500, 500)  # 锚点坐标
 
+    """ 跟随模式配置 """
     follow_update_interval = 3  # 跟随更新间隔（毫秒），不论什么模式，指的是定时器间隔
 
     drag_follow_enabled: bool = None  # 是否开启拖动功能
@@ -108,17 +109,19 @@ class Config(BaseObservable):
     is_mouse_follow = False  # 是否正在跟随鼠标
     mouse_follow_speed = 5  # 每次的跟随，移动的像素点长度，跟随速度，单位:像素/s
 
-    anchor_pos = QPoint(500, 500)  # 锚点坐标
-
+    """ 放大模式配置 """
     bigger_enabled: bool = None  # 是否开启放大功能
     bigger_flag = False  # 放大的标志位
     bigger_wait_time: int = None  # 等待时间，单位: 毫秒
     bigger_max_size_ratio: float = None  # 最大放大比例
 
+    """ 托盘消息配置 """
+    tray_msg_enabled: bool = None  # 是否开启托盘消息
+
+
 
 config_path = "config.yaml"
 config = Config()
-
 
 
 def load_config():

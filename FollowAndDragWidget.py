@@ -6,11 +6,12 @@ from PyQt5.QtCore import Qt, QPoint, QRect, QPointF
 from PyQt5.QtGui import QPixmap, QTransform, QCursor
 
 from module_controllers.ClickThroughController import ClickThroughController
+from module_controllers.TrayMsgController import TrayMsgController
 from monitors.KeyMonitor import KeyMonitor
 from monitors.ScreenMonitor import ScreenMonitor
 from image_modes.ModeManager import ModeManager
 from module_controllers.MouseFollowController import MouseFollowController
-from resmeta.imagemeta import ImageMeta
+from resmeta.image_meta import ImageMeta
 from settings import create_tray
 from utils.log_util import logger
 from configs import config
@@ -60,6 +61,7 @@ class FollowAndDragWidget(QWidget):
             self.click_through_controller = ClickThroughController(self)  # 点击穿透控制器
             self.size_growing_controller = SizeGrowingController(self)  # 大小增长控制器
             self.tray, self.tray_menu = create_tray(self)  # 创建系统托盘图标
+            self.tray_msg_controller = TrayMsgController(self)  # 托盘消息控制器
 
             self.start()
             logger.info("程序启动成功")
@@ -74,6 +76,7 @@ class FollowAndDragWidget(QWidget):
         self.size_growing_controller.start()  # 启动大小增长控制器，开始计时
         self.follow_controller.start()  # 启动鼠标跟随控制器，开始跟随鼠标
         self.click_through_controller.start()  # 启动点击穿透控制器，开始设置窗口点击穿透
+        self.tray_msg_controller.start()  # 启动托盘消息控制器，开始显示消息
 
     def get_cursor_pos(self) -> QPointF:
         """获取当前鼠标位置，相对窗口坐标"""
@@ -100,8 +103,8 @@ class FollowAndDragWidget(QWidget):
             return
 
         image_anchor = img_meta.anchor
-        image_size_r = img_meta.size_r
-        cur_size_r = config.size_ratio_base * config.size_ratio / image_size_r
+        image_size_r = img_meta.size_r  # 图片大小比例,有的图片是1：128*128，有的是10：1280*1280, 等比例缩放
+        cur_size_r = config.size_ratio * config.size_ratio_base / image_size_r  # 表示当前的 最终比列
 
         scaled_pixmap = pixmap.scaled(
             pixmap.size() * cur_size_r,
@@ -118,7 +121,8 @@ class FollowAndDragWidget(QWidget):
         self.image_label.setPixmap(scaled_pixmap)
         self.image_label.resize(scaled_pixmap.size())  # 调整图片标签大小为缩放后的图片大小
 
-        new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos)
+        # print(f"offset:{offset},offset*2.526:{offset*2.526}")
+        new_offset = self.adjust_offset_screen_connect(offset*cur_size_r, config.anchor_pos)
         config.anchor_pos += new_offset
         new_pos = config.anchor_pos - scaled_anchor
         # print(f"设置图片: {img_meta.path}, 大小比例: {self.size_ratio}, 锚点: {scaled_anchor}, 偏移量: {new_offset}, offset: {offset}")

@@ -1,1 +1,1 @@
-from resmeta.imagemeta import Images
+from resmeta.image_meta import Images

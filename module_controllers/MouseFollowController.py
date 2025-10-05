@@ -1,8 +1,10 @@
 import datetime
 from typing import TYPE_CHECKING
 
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QMouseEvent
 from PyQt5.QtWidgets import QApplication
+
+import utils.pos_util
 
 if TYPE_CHECKING:
     from FollowAndDragWidget import FollowAndDragWidget
@@ -10,6 +12,7 @@ from monitors.ScreenMonitor import get_cur_work_bottom
 from module_controllers.ModuleController import ModuleController
 
 import image_modes
+from resmeta.tray_msg_meta import TragMsgs, TrayMsgMeta
 import math
 import traceback
 from PyQt5.QtCore import Qt, QPoint, QTimer, QPointF
@@ -47,12 +50,78 @@ class MouseFollowController(ModuleController):
         self.drag_move_offset_last = QPoint()  # 上一次的移动位移量
         self.drag_follow_start_time = None  # 拖拽跟随开始时间
         self.throw_follow_start_time = None  # 抛掷跟随开始时间
+        self.throw_start_pos = QPoint()  # 抛掷开始位置,记录抛掷开始时的鼠标位置
+        self.throw_highest_pos = QPoint()  # 抛掷最高位置
+        self.throw_sum_offset = QPoint()  # 抛掷总位移量
         self.mouse_follow_start_time = None  # 跟随开始时间
 
         self.bind_events()
 
     def start(self):
         self.update_follow_timer.start(config.follow_update_interval)  # 每多少毫秒更新一次
+
+    def drag_begin(self, event: QMouseEvent):
+        try:
+            # 开始拖动
+            self.widget.mode_manager.set_mode(image_modes.DragFollowMode.name())  # 切换到拖动模式
+            config.is_drag_follow = True
+            self.drag_img_offset = QPoint(QPoint(self.widget.image_label.width() // 2, 0))
+
+            new_pos = event.pos() - self.drag_img_offset
+            now_pos = self.widget.image_label.pos()
+            # 记录上一次的移动位移量
+            self.drag_move_offset_last = QPoint()
+            self.drag_move_offset = new_pos - now_pos
+            self.widget.img_move_by_offset(self.drag_move_offset)  # 拖动图片
+            self.drag_follow_start_time = datetime.datetime.now()  # 记录跟随开始时间
+            self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
+            logger.info(f"用户开始拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})")
+            self.widget.tray_msg_controller.change_text(tray_msg=TragMsgs.Meow.MIAO1.value, duration=0)
+
+        except Exception as e:
+            logger.error(f"拖动开始异常: {traceback.format_exc()}")
+
+    def drag_end(self, event: QMouseEvent):
+        try:
+            self.widget.mode_manager.change_next_mode()  # 切换到下一个模式
+            config.is_drag_follow = False
+            duration = datetime.datetime.now() - self.drag_follow_start_time  # 计算拖动时间
+            logger.info(f"用户结束拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})， 拖动时间: {duration}")
+            self.drag_cnt = 0  # 拖拽计数器归零
+            if config.throw_follow_enabled:
+                self.throw_begin()  # 检查是否开始跟随,如果是,则开始跟随
+            else:
+                self.widget.tray_msg_controller.change_text_discontinuous()
+
+        except Exception as e:
+            logger.error(f"拖动结束异常: {traceback.format_exc()}")
+
+    def drag_func(self, event: QMouseEvent):
+        try:
+            new_pos = event.pos() - self.drag_img_offset
+            now_pos = self.widget.image_label.pos()
+            # 记录上一次的移动位移量
+            self.drag_move_offset_last = self.drag_move_offset
+            self.drag_move_offset = new_pos - now_pos
+            # 根据移动量判断 drag的具体序号
+            drag_offset = (self.drag_move_offset_last + self.drag_move_offset) / 2
+            mode = self.widget.mode_manager.get_current_mode()
+            if isinstance(mode, image_modes.DragFollowMode):
+                index = None
+                if drag_offset.x() <= -10:
+                    index = 6
+                elif drag_offset.x() <= -5:
+                    index = 4
+                elif drag_offset.x() >= 10:
+                    index = 5
+                elif drag_offset.x() >= 5:
+                    index = 3
+                if index is not None:
+                    mode.update_image_series(index)
+            self.widget.img_move_by_offset(self.drag_move_offset)  # 拖动图片
+            self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
+        except Exception as e:
+            logger.error(f"拖动过程异常: {traceback.format_exc()}")
 
     def throw_begin(self):
         def cal_throw_speed():
@@ -85,18 +154,29 @@ class MouseFollowController(ModuleController):
 
         config.is_throw_follow = True
         config.throw_follow_speed = cal_throw_speed()
+        self.throw_start_pos = QPoint(config.anchor_pos)  # 抛掷开始位置,记录抛掷开始时的鼠标位置
+        self.throw_highest_pos = QPoint(config.anchor_pos)  # 记录抛掷最高位置,初始化当前位置
+        self.throw_sum_offset = QPoint()  # 抛掷总位移量
         self.throw_follow_start_time = datetime.datetime.now()
         logger.info(f"抛掷跟随开始，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})")
         self.widget.mode_manager.set_mode(image_modes.ThrowFollowMode.name())  # 切换到抛掷模式
+        self.widget.tray_msg_controller.change_text(tray_msg=TragMsgs.Meow.MIAO2.value, duration=0)
 
     def throw_end(self):
         config.is_throw_follow = False
         duration = (datetime.datetime.now() - self.throw_follow_start_time).total_seconds()
-        logger.info(f"抛掷跟随结束，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f}),持续时间: {duration:.2f}秒")
-
+        logger.info(f"抛掷跟随结束，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f}),持续时间: {duration:.2f}秒，"
+                    f"开始位置: {utils.pos_util.point_to_tuple(self.throw_start_pos)}, 最高位置: {utils.pos_util.point_to_tuple(self.throw_highest_pos)}, 总位移量: {utils.pos_util.point_to_tuple(self.throw_sum_offset)}")
         self.widget.mode_manager.change_next_mode()  # 切换到抛掷模式
+        height = self.throw_start_pos.y() - self.throw_highest_pos.y()
+        if height > 0:
+            self.widget.tray_msg_controller.change_text(tray_msg=TrayMsgMeta(text=f"抛掷高度: {height} 像素", base_ms=5000))
+        else:
+            self.widget.tray_msg_controller.change_text_discontinuous()
+        self.drag_move_offset = QPoint()  # 移动位移量
+        self.drag_move_offset_last = QPoint()  # 上一次的移动位移量
 
-    def func_throw(self):
+    def throw_func(self):
         """ 抛掷动画函数 """
 
         def cal_new_pos_offset():
@@ -119,13 +199,16 @@ class MouseFollowController(ModuleController):
         if config.anchor_pos.y() < cur_work_bottom:  # 未拖动
             offset = cal_new_pos_offset()  # 计算偏移量，根据锚点计算
             self.widget.img_move_by_offset(offset)  # 移动图片
-        elif config.anchor_pos.y() > cur_work_bottom:  # 在任务栏下
-            # 修正位置，防止超出工作区域
+            self.throw_sum_offset += QPoint(abs(offset.x()), abs(offset.y()))  # 记录抛掷总位移量,需要修改为绝对值
+            # print(f"当前位置: ({utils.pos_util.point_to_tuple(config.anchor_pos)}), 偏移量: ({utils.pos_util.point_to_tuple(offset)}), 抛掷最高位置: ({utils.pos_util.point_to_tuple(self.throw_highest_pos)}), 抛掷总位移量: ({utils.pos_util.point_to_tuple(self.throw_sum_offset)})")
+            if config.anchor_pos.y() < self.throw_highest_pos.y():  # 记录抛掷最高位置，需要取y最小值时更新
+                self.throw_highest_pos = QPoint(config.anchor_pos)  # 更新抛掷最高位置
+        elif config.anchor_pos.y() > cur_work_bottom:  # 在任务栏下，修正位置，防止超出工作区域
             cur_work_bottom = get_cur_work_bottom(config.anchor_pos, self.widget.screen_monitor)
             offset = QPoint(0, cur_work_bottom - config.anchor_pos.y())  # 计算偏移量，根据锚点计算
             self.widget.img_move_by_offset(offset)  # 移动图片
         else:
-            self.throw_end()
+            self.throw_end()  # 抛掷结束
 
     def check_mouse_begin(self):
         if not config.is_mouse_follow:
@@ -141,10 +224,8 @@ class MouseFollowController(ModuleController):
             logger.info(f"跟随鼠标移动结束，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f}),持续时间: {duration:.2f}秒")
             self.widget.mode_manager.change_next_mode()
 
-    def func_mouse(self):
-        """
-        跟随动画函数
-        """
+    def mouse_func(self):
+        """ 跟随动画函数 """
 
         def cal_new_pos_offset(now_pos, tar_pos):
             """计算新位置（逐步靠近鼠标）"""
@@ -183,38 +264,31 @@ class MouseFollowController(ModuleController):
         else:
             self.check_mouse_end()
 
-    def func_drag(self):
-        """
-        拖动跟随函数
-        """
+    def drag_check_need_end(self):
+        """ 检查是否需要结束拖动跟随 """
         # 如果当前窗口不是主窗口
         active_window = QApplication.activeWindow()
-
         if active_window != self.widget:
             config.is_drag_follow = False
 
-    def check_fall(self):
-        """
-        检查是否掉落
-        """
+    def fall_check_need_begin(self):
+        """ 检查是否需要开始跟随 """
         cur_work_bottom = get_cur_work_bottom(config.anchor_pos, self.widget.screen_monitor)
         # print(f"config.anchor_pos.y():{config.anchor_pos.y()},cur_work_bottom:{cur_work_bottom},{config.anchor_pos.y() != cur_work_bottom}")
         if config.anchor_pos.y() != cur_work_bottom and config.gravity_enable:
             self.throw_begin()
 
     def follow_update(self):
-        """
-        定时器更新函数，用于更新宠物的位置
-        """
+        """ 定时器更新函数，用于更新宠物的位置 """
         try:
             if config.is_drag_follow:  # 拖动时，且拖拽计数器大于0
-                self.func_drag()
+                self.drag_check_need_end()
             elif config.throw_follow_enabled and config.is_throw_follow:  # is_throw_follow 为 True 时，执行抛掷跟随（拖动结束时开，拖拽结束关）
-                self.func_throw()
+                self.throw_func()
             elif config.mouse_follow_enabled:  # is_throw_follow无论是否，都执行跟随鼠标
-                self.func_mouse()
+                self.mouse_func()
             elif config.throw_follow_enabled:
-                self.check_fall()
+                self.fall_check_need_begin()
 
         except Exception as e:
             logger.error(f"抛掷跟随更新事件异常: {e}")
@@ -225,67 +299,17 @@ class MouseFollowController(ModuleController):
         self.widget.mouseReleaseEvent = self.mouseReleaseEvent  # 绑定鼠标松开事件
         self.widget.mouseMoveEvent = self.mouseMoveEvent  # 绑定鼠标移动事件
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         """处理鼠标按下事件，开始拖动图片"""
-        try:
-            if event.button() == Qt.LeftButton and config.drag_follow_enabled:  # 开始拖动
-                self.widget.mode_manager.set_mode(image_modes.DragFollowMode.name())  # 切换到拖动模式
-                config.is_drag_follow = True
-                self.drag_img_offset = QPoint(QPoint(self.widget.image_label.width() // 2, 0))
+        if event.button() == Qt.LeftButton and config.drag_follow_enabled:
+            self.drag_begin(event)
 
-                new_pos = event.pos() - self.drag_img_offset
-                now_pos = self.widget.image_label.pos()
-                # 记录上一次的移动位移量
-                self.drag_move_offset_last = QPoint()
-                self.drag_move_offset = new_pos - now_pos
-                self.widget.img_move_by_offset(self.drag_move_offset)  # 拖动图片
-                self.drag_follow_start_time = datetime.datetime.now()  # 记录跟随开始时间
-                self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
-                logger.info(f"用户开始拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})")
-
-
-        except Exception as e:
-            logger.error(f"鼠标按下事件错误: {traceback.format_exc()}")
-
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         """处理鼠标移动事件，拖动图片"""
-        try:
-            if config.is_drag_follow and config.drag_follow_enabled:  # 拖动状态下移动窗口
-                new_pos = event.pos() - self.drag_img_offset
-                now_pos = self.widget.image_label.pos()
-                # 记录上一次的移动位移量
-                self.drag_move_offset_last = self.drag_move_offset
-                self.drag_move_offset = new_pos - now_pos
-                # 根据移动量判断 drag的具体序号
-                drag_offset =(self.drag_move_offset_last + self.drag_move_offset) /2
-                mode = self.widget.mode_manager.get_current_mode()
-                if isinstance(mode,image_modes.DragFollowMode):
-                    index=None
-                    if drag_offset.x()<=-10 :
-                        index=6
-                    elif drag_offset.x() <= -5:
-                        index = 4
-                    elif drag_offset.x()>=10:
-                        index=5
-                    elif drag_offset.x()>=5:
-                        index=3
-                    if index is not None:
-                        mode.update_image_series(index)
-                self.widget.img_move_by_offset(self.drag_move_offset)  # 拖动图片
-                self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
-        except Exception as e:
-            logger.error(f"鼠标移动事件错误: {traceback.format_exc()}")
+        if config.is_drag_follow and config.drag_follow_enabled:  # 拖动状态下移动窗口
+            self.drag_func(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         """处理鼠标释放事件，结束拖动图片"""
-        try:
-            if event.button() == Qt.LeftButton and config.is_drag_follow:  # 结束拖动
-                self.widget.mode_manager.change_next_mode()  # 切换到下一个模式
-                config.is_drag_follow = False
-                duration = datetime.datetime.now() - self.drag_follow_start_time  # 计算拖动时间
-                logger.info(f"用户结束拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})， 拖动时间: {duration}")
-                self.drag_cnt = 0  # 拖拽计数器归零
-                if config.throw_follow_enabled:
-                    self.throw_begin()  # 检查是否开始跟随,如果是,则开始跟随
-        except Exception as e:
-            logger.error(f"鼠标释放事件错误: {traceback.format_exc()}")
+        if event.button() == Qt.LeftButton and config.is_drag_follow:  # 结束拖动
+            self.drag_end(event)

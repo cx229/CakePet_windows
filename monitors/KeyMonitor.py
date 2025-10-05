@@ -1,30 +1,92 @@
+from os import remove
+
 from pynput import keyboard
-import threading
 import time
 
 from configs import config
 
+_VK_TO_NAME = {
+    # 字母键 A-Z (65-90)
+    65: 'A', 66: 'B', 67: 'C', 68: 'D', 69: 'E', 70: 'F', 71: 'G', 72: 'H',
+    73: 'I', 74: 'J', 75: 'K', 76: 'L', 77: 'M', 78: 'N', 79: 'O', 80: 'P',
+    81: 'Q', 82: 'R', 83: 'S', 84: 'T', 85: 'U', 86: 'V', 87: 'W', 88: 'X',
+    89: 'Y', 90: 'Z',
+
+    # 数字键 0-9 (48-57)
+    48: '0', 49: '1', 50: '2', 51: '3', 52: '4', 53: '5', 54: '6', 55: '7',
+    56: '8', 57: '9',
+
+    # 符号键（主键盘区）
+    192: '`', 189: '-', 187: '=', 219: '[', 221: ']', 220: '\\', 186: ';',
+    222: "'", 188: ',', 190: '.', 191: '/',
+
+    # 功能键 F1-F24 (112-135)
+    112: 'F1', 113: 'F2', 114: 'F3', 115: 'F4', 116: 'F5', 117: 'F6',
+    118: 'F7', 119: 'F8', 120: 'F9', 121: 'F10', 122: 'F11', 123: 'F12',
+    # F13-F24 通常需要特殊键盘支持
+    124: 'F13', 125: 'F14', 126: 'F15', 127: 'F16', 128: 'F17', 129: 'F18',
+    130: 'F19', 131: 'F20', 132: 'F21', 133: 'F22', 134: 'F23', 135: 'F24',
+
+    # 修饰键
+    160: 'Shift', 161: 'Shift', 162: 'Ctrl', 163: 'Ctrl', 164: 'Alt', 165: 'Alt',
+    91: 'Win', 92: 'Win', 93: 'Menu',
+
+    # 导航键
+    33: 'PageUp', 34: 'PageDown', 35: 'End', 36: 'Home', 45: 'Insert', 46: 'Delete',
+
+    # 方向键
+    37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down',
+
+    # 数字小键盘
+    96: 'Num0', 97: 'Num1', 98: 'Num2', 99: 'Num3', 100: 'Num4', 101: 'Num5',
+    102: 'Num6', 103: 'Num7', 104: 'Num8', 105: 'Num9', 106: 'Num*', 107: 'Num+',
+    109: 'Num-', 110: 'Num.', 111: 'Num/',
+
+    # 其他常用键
+    13: 'Enter', 27: 'Esc', 32: 'Space', 8: 'Backspace', 9: 'Tab', 20: 'CapsLock',
+    144: 'NumLock', 145: 'ScrollLock', 19: 'Pause', 44: 'PrintScreen',
+
+    # 多媒体键（部分键盘支持）
+    173: 'Mute', 174: 'VolumeDown', 175: 'VolumeUp', 176: 'NextTrack',
+    177: 'PreviousTrack', 178: 'Stop', 179: 'Play/Pause',
+
+    # 鼠标键（通常不会触发键盘监听，但列出以防万一）
+    1: 'MouseLeft', 2: 'MouseRight', 3: 'MouseMiddle',
+}
+
 
 class KeyMonitor:
     def __init__(self):
-        self.pressed_keys = set()  # 记录当前按下的键
+        self.pressed_keys: set[keyboard.Key] = set()  # 记录当前按下的键
         self.listener = None  # 监听器对象
         self.is_running = False  # 监听状态标志
+
+    def get_pressed_keys(self) -> str:
+        """获取当前按下的键的字符串表示"""
+        return ", ".join([_VK_TO_NAME.get(key, str(key)) for key in self.pressed_keys])
+
+    def _on_press(self, key):
+
+        if hasattr(key, 'vk'):
+            key_add = key.vk
+        else:
+            key_add = key
+        if key_add not in self.pressed_keys:
+            self.pressed_keys.add(key_add)
+            self._update_config_ctrl_l_only()
+
+    def _on_release(self, key):
+        if hasattr(key, 'vk'):
+            key_remove = key.vk
+        else:
+            key_remove = key
+        if key_remove in self.pressed_keys:
+            self.pressed_keys.remove(key_remove)
+            self._update_config_ctrl_l_only()
 
     def _update_config_ctrl_l_only(self):
         """根据当前按下的键更新配置"""
         config.key_ctrl_l_only = self.check_ctrl_only()
-
-    def _on_press(self, key):
-        self.pressed_keys.add(key)
-        # print(f"按下键: {key}")
-        self._update_config_ctrl_l_only()
-
-    def _on_release(self, key):
-        if key in self.pressed_keys:
-            # print(f"释放键: {key}")
-            self.pressed_keys.remove(key)
-            self._update_config_ctrl_l_only()
 
     def check_key(self, key: keyboard.Key, is_only=False):
         """检查某个键是否按下（可选是否唯一按下）"""
@@ -51,11 +113,7 @@ class KeyMonitor:
             self.is_running = False
             self.listener.stop()  # 停止监听
             self.listener = None
-            print("键盘监听已停止")
 
-
-# key_monitor = KeyMonitor()  # 全局实例
-# key_monitor.start()  # 启动监听线程
 
 # 使用示例
 if __name__ == "__main__":
@@ -65,7 +123,8 @@ if __name__ == "__main__":
     try:
         # 主程序继续运行（这里用死循环模拟，实际可能是 GUI 或任务循环）
         while True:
-            print("主程序正在运行...")
-            time.sleep(1)
+            # 按键信息
+            print(f"按键信息: {key_monitor.get_pressed_keys()}")
+            time.sleep(0.5)
     except KeyboardInterrupt:
         key_monitor.stop()  # 按 Ctrl+C 停止

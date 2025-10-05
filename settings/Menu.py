@@ -29,12 +29,12 @@ class Menu(QMenu):
         """初始化菜单动作"""
 
         # 拖动功能开关
-        self.drag_action = QAction("拖动功能", self.parent, checkable=True)
+        self.drag_action = QAction("单击拖动", self.parent, checkable=True)
         self.drag_action.setChecked(config.drag_follow_enabled)
         self.addAction(self.drag_action)
 
         # 抛掷功能开关
-        self.throw_action = QAction("抛掷功能", self.parent, checkable=True)
+        self.throw_action = QAction("重力抛掷", self.parent, checkable=True)
         self.throw_action.setChecked(config.throw_follow_enabled)
         self.addAction(self.throw_action)
 
@@ -43,25 +43,27 @@ class Menu(QMenu):
         self.follow_action.setChecked(config.mouse_follow_enabled)
         self.addAction(self.follow_action)
 
-        # 放大 开关
-        self.bigger_action = QAction("放大", self.parent, checkable=True)
-        self.bigger_action.setChecked(config.bigger_flag)
-        self.addAction(self.bigger_action)
-
         # 点击穿透开关
         self.click_through_action = QAction("点击穿透", self.parent, checkable=True)
         self.click_through_action.setChecked(config.click_through_enabled)
         self.addAction(self.click_through_action)
 
+        # 放大 开关
+        self.bigger_action = QAction("放大", self.parent, checkable=True)
+        self.bigger_action.setChecked(config.bigger_flag)
+        self.addAction(self.bigger_action)
+
         # 创建静态子菜单
         self.img_mode_submenu = QMenu("触发行为", self)
         self.addMenu(self.img_mode_submenu)
+
+        self.addSeparator()  # 分隔线
 
         # 设置菜单
         self.settings_action = QAction("设置", self.parent)
         self.addAction(self.settings_action)
 
-        self.addSeparator()
+        self.addSeparator()  # 分隔线
 
         # 退出菜单
         self.exit_action = QAction("退出", self.parent)
@@ -175,8 +177,12 @@ class Menu(QMenu):
     def _init_img_mode_submenu(self):
         """初始化图片模式子菜单"""
 
-        modes = image_modes.modes_standby_fix + image_modes.modes_standby_move
-        for item in modes:
-            action = QAction(item.title, self.img_mode_submenu)
-            action.triggered.connect(lambda _, x=item: self._on_img_mode_clicked(x))
-            self.img_mode_submenu.addAction(action)
+        def add_modes_to_submenu(modes):
+            for item in modes:
+                action = QAction(item.title, self.img_mode_submenu)
+                action.triggered.connect(lambda _, x=item: self._on_img_mode_clicked(x))
+                self.img_mode_submenu.addAction(action)
+
+        add_modes_to_submenu(image_modes.modes_standby_fix)
+        self.img_mode_submenu.addSeparator()  # 分隔线
+        add_modes_to_submenu(image_modes.modes_standby_move)

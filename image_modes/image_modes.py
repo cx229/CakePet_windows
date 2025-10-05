@@ -11,7 +11,7 @@ from resmeta import Images
 
 
 class SitClamMode(ImagesMode):
-    title = "静坐"
+    title = "坐-安静"
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
@@ -24,7 +24,7 @@ class SitClamMode(ImagesMode):
 
 
 class SitPuffedMode(ImagesMode):
-    title = "炸毛"
+    title = "坐-炸毛"
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
@@ -38,7 +38,7 @@ class SitPuffedMode(ImagesMode):
 
 
 class PatHeadMode(ImagesMode):
-    title = "摸头"
+    title = "坐-摸头"
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
@@ -57,7 +57,7 @@ class PatHeadMode(ImagesMode):
 
 
 class ShakeHeadMode(ImagesMode):
-    title = "摇头"
+    title = "坐-摇头"
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
@@ -69,6 +69,50 @@ class ShakeHeadMode(ImagesMode):
         self.change_interval_max = 2000
         self.change_prob = 1
         self.next_mode_name = SitPuffedMode.name()  # 指定下一个模式为 坐,炸毛
+
+
+class WhiteMode(ImagesMode):
+    title = "美白体验"
+
+    def __init__(self, widget: QWidget):
+        super().__init__(widget)
+        self.confs = {
+            1: ImagesMode.ImageConf(Images.Walk.WHITE1.value, 2, lambda: random.randint(200, 300)),
+            2: ImagesMode.ImageConf(Images.Walk.WHITE2.value, 3, lambda: random.randint(200, 300)),
+            3: ImagesMode.ImageConf(Images.Walk.WHITE3.value, 4, lambda: random.randint(200, 300)),
+            4: ImagesMode.ImageConf(Images.Walk.WHITE4.value, 5, lambda: random.randint(200, 300)),
+            5: ImagesMode.ImageConf(Images.Walk.WHITE5.value, None, lambda: random.randint(5000, 10000)),
+        }
+
+        self.time_next_enabled = False
+
+
+class ProbeHeadMode(ImagesMode):
+    title = "猫猫探头"
+
+    def __init__(self, widget: QWidget):
+        super().__init__(widget)
+        self.confs = {
+            1: ImagesMode.ImageConf(Images.ProbeHead.S1.value, 2, lambda: random.randint(1000, 5000)),
+            2: ImagesMode.ImageConf(Images.ProbeHead.S2.value, 1, lambda: random.randint(150, 300)),
+        }
+        self.change_interval_min = 5000
+        self.change_interval_max = 10000
+        self.change_prob = 0.5
+        self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
+        self.next_mode_name = SitClamMode.name()  # 指定下一个模式为 坐
+
+
+class LieMode(ImagesMode):
+    title = "趴着"
+
+    def __init__(self, widget: QWidget):
+        super().__init__(widget)
+        self.confs = {
+            1: ImagesMode.ImageConf(Images.Wriggle.S1.value, None, lambda: random.randint(3000, 7000)),
+        }
+        self.time_next_enabled = False  # 关闭定时切换,靠单个图片的next
+        self.change_prob = 0.5
 
 
 class WalkMode(ImagesMode):
@@ -86,22 +130,6 @@ class WalkMode(ImagesMode):
         self.change_interval_max = 10 * 1000
 
 
-class ProbeHeadMode(ImagesMode):
-    title = "探头"
-
-    def __init__(self, widget: QWidget):
-        super().__init__(widget)
-        self.confs = {
-            1: ImagesMode.ImageConf(Images.ProbeHead.S1.value, 2, lambda: random.randint(1000, 5000)),
-            2: ImagesMode.ImageConf(Images.ProbeHead.S2.value, 1, lambda: random.randint(150, 300)),
-        }
-        self.change_interval_min = 5000
-        self.change_interval_max = 10000
-        self.change_prob = 0.5
-        self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
-        self.next_mode_name = SitClamMode.name()  # 指定下一个模式为 坐
-
-
 class WriggleMode(ImagesMode):
     title = "蠕动"
 
@@ -117,16 +145,21 @@ class WriggleMode(ImagesMode):
         self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
 
 
-class LieMode(ImagesMode):
-    title = "趴着"
+class RollMode(ImagesMode):
+    title = "翻滚"
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
         self.confs = {
-            1: ImagesMode.ImageConf(Images.Wriggle.S1.value, None, lambda: random.randint(3000, 7000)),
+            1: ImagesMode.ImageConf(Images.Roll.S1.value, 2, 50, QPoint(-50, 0)),
+            2: ImagesMode.ImageConf(Images.Roll.S2.value, 3, 50, QPoint(-50, 0)),
+            3: ImagesMode.ImageConf(Images.Roll.S3.value, 4, 50, QPoint(-50, 0)),
+            4: ImagesMode.ImageConf(Images.Roll.S4.value, 5, 50, QPoint(-50, 0)),
+            5: ImagesMode.ImageConf(Images.Roll.S5.value, 6, 50, QPoint(-50, 0)),
+            6: ImagesMode.ImageConf(Images.Roll.S6.value, 1, 50, QPoint(-50, 0)),
         }
-        self.time_next_enabled = False  # 关闭定时切换,靠单个图片的next
-        self.change_prob = 0.5
+
+        self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
 
 
 class PullFishMode(ImagesMode):
@@ -134,16 +167,17 @@ class PullFishMode(ImagesMode):
 
     def __init__(self, widget: QWidget):
         super().__init__(widget)
+        ratio = random.random() * 0.8 + 0.7  # 0.7-1.5 的随机数
         self.confs = {
             1: ImagesMode.ImageConf(Images.PullFish.S1.value, 2, lambda: random.randint(300, 500)),
             2: ImagesMode.ImageConf(Images.PullFish.S2.value, 3, lambda: random.randint(130, 160)),
             3: ImagesMode.ImageConf(Images.PullFish.S3.value, 4, lambda: random.randint(160, 200)),
             4: ImagesMode.ImageConf(Images.PullFish.S4.value, 5, lambda: random.randint(130, 160)),
-            5: ImagesMode.ImageConf(Images.PullFish.S5.value, 6, 70, QPoint(0, 0)),
-            6: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=15), 7, 70, QPoint(80, 0)),
-            7: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=25), 8, 70, QPoint(75, 0)),
-            8: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=15), 9, 70, QPoint(75, 0)),
-            9: ImagesMode.ImageConf(replace(Images.PullFish.S7.value, anchor_dy=0), None, 500, QPoint(70, 0)),
+            5: ImagesMode.ImageConf(Images.PullFish.S5.value, 6, 70),
+            6: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=int(70 * ratio)), 7, 70, QPoint(130, 0) * ratio),
+            7: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=int(110 * ratio)), 8, 70, QPoint(125, 0) * ratio),
+            8: ImagesMode.ImageConf(replace(Images.PullFish.S6.value, anchor_dy=int(70 * ratio)), 9, 70, QPoint(120, 0) * ratio),
+            9: ImagesMode.ImageConf(replace(Images.Wriggle.S1.value, anchor_dy=0), None, 500, QPoint(120, 0) * ratio),
         }
         self.time_next_enabled = False  # 关闭定时切换
         self.change_prob = 1
@@ -176,13 +210,14 @@ class ThrowFollowMode(ImagesMode):
         self.confs = {
             1: ImagesMode.ImageConf(Images.Roll.S1.value, 2, lambda: random.randint(140, 180)),
             2: ImagesMode.ImageConf(Images.Roll.S2.value, 3, lambda: random.randint(140, 180)),
-            3: ImagesMode.ImageConf(Images.Roll.S3.value, 1, lambda: random.randint(140, 180)),
+            3: ImagesMode.ImageConf(Images.Roll.S3.value, 4, lambda: random.randint(140, 180)),
             4: ImagesMode.ImageConf(Images.Roll.S4.value, 5, lambda: random.randint(140, 180)),
             5: ImagesMode.ImageConf(Images.Roll.S5.value, 6, lambda: random.randint(140, 180)),
             6: ImagesMode.ImageConf(Images.Roll.S6.value, 1, lambda: random.randint(140, 180)),
         }
         self.time_next_enabled = False  # 关闭定时切换
-        self.next_mode_name = ThrowFallStandFollowMode.name()  # 指定下一个模式为摇头
+        self.next_mode_name = ThrowFallStandFollowMode.name()  # 指定下一个模式为 掉落-跟随
+        # self.next_mode_name = RollMode.name()  # 指定下一个模式为 掉落-跟随
 
 
 class ThrowFallStandFollowMode(ImagesMode):

@@ -1,4 +1,5 @@
 import traceback
+
 from PyQt5.QtWidgets import (QMenu, QAction, QDialog, QVBoxLayout,
                              QSlider, QCheckBox, QPushButton, QMessageBox,
                              QHBoxLayout, QLabel, QApplication)
@@ -65,6 +66,13 @@ class Menu(QMenu):
 
         self.addSeparator()  # 分隔线
 
+        # 隐藏图片
+        self.hide_img_action = QAction("隐藏", self.parent, checkable=True)
+        self.hide_img_action.setChecked(config.img_hide_flag)
+        self.addAction(self.hide_img_action)
+
+        self.addSeparator()  # 分隔线
+
         # 退出菜单
         self.exit_action = QAction("退出", self.parent)
         self.addAction(self.exit_action)
@@ -78,6 +86,7 @@ class Menu(QMenu):
         self.bigger_action.toggled.connect(self._on_bigger_toggled)
         self.click_through_action.toggled.connect(self._on_click_through_toggled)
 
+        self.hide_img_action.toggled.connect(self._on_hide_img_toggled)
         self.settings_action.triggered.connect(self._show_settings)  # 设置
         self.exit_action.triggered.connect(QApplication.instance().quit)  # 直接退出应用
 
@@ -186,3 +195,16 @@ class Menu(QMenu):
         add_modes_to_submenu(image_modes.modes_standby_fix)
         self.img_mode_submenu.addSeparator()  # 分隔线
         add_modes_to_submenu(image_modes.modes_standby_move)
+
+    def _on_hide_img_toggled(self, checked):
+        """处理隐藏图片切换"""
+        try:
+            config.img_hide_flag = checked
+            if checked:
+                self.parent.hide()
+            else:
+                self.parent.show()
+            # self.hide_img_action.setText("隐藏" if checked else "显示")
+            logger.info(f"菜单，用户{'开启' if checked else '关闭'}隐藏图片功能")
+        except Exception as e:
+            logger.error(f"菜单切换隐藏图片错误: {traceback.format_exc()}")

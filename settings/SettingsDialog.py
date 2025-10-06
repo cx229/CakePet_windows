@@ -416,7 +416,7 @@ class SettingsDialog(QDialog):
         self.bigger_max_ratio_slider.valueChanged.connect(self._on_bigger_max_size_ratio_changed)
 
         # 等待时间滑块
-        self.wait_label = QLabel(f"{config.bigger_wait_time / 60 / 1000:.1f}分钟")
+        self.wait_label = QLabel(f"{config.bigger_wait_time / 60 / 1000}分钟")
         self.wait_slider = QSlider(Qt.Horizontal, self)
         self.wait_slider.setRange(1, 240)
         self.wait_slider.setValue(int(config.bigger_wait_time / 60 / 1000))
@@ -431,7 +431,7 @@ class SettingsDialog(QDialog):
         # 创建布局
         layout.addWidget(create_group_title("基本功能"))
         layout.addWidget(create_slider_item("大小基数", self.size_ratio_base_slider, self.size_ratio_base_label,
-                                            "调整窗口的基准大小比例（默认1.0）"))
+                                            "调整窗口的基准大小比例（默认1.5）"))
         layout.addWidget(create_setting_item("屏幕循环连接", self.screen_connect_check,
                                              "左边消失，右边出现；右边消失，左边出现..."))
 
@@ -442,9 +442,9 @@ class SettingsDialog(QDialog):
         layout.addWidget(create_setting_item("单击拖动", self.drag_follow_check,
                                              "鼠标左键可以拖动,移来移去..."))
         layout.addWidget(create_setting_item("重力抛掷", self.throw_follow_check,
-                                             "拖动结束时，会被丢出去，自由落体"))
+                                             "拖动结束时，会被丢出去，自由落体（关闭后，将不会上下移动，也不会左右跑动）"))
         layout.addWidget(create_setting_item("重力抛掷-反弹模式", self.throw_bounce_check,
-                                             "重力抛掷开启的情况下，碰到屏幕边缘时会反弹"))
+                                             "重力抛掷开启的情况下，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）"))
         layout.addWidget(create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
                                             self.throw_follow_rebound_ratio_label,
                                             "反弹因数越大，损失的能量越小（默认0.8）", False))
@@ -463,7 +463,7 @@ class SettingsDialog(QDialog):
                                             "多长时间后触发变大提醒（默认45分钟）"))
         layout.addWidget(create_slider_item("变大比例", self.bigger_max_ratio_slider,
                                             self.bigger_max_size_ratio_label,
-                                            "变大的最大倍数（默认10），注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False))
+                                            "变大的最大倍数（默认10.0），注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False))
 
         layout.addWidget(create_group_title("托盘消息"))
         layout.addWidget(create_setting_item("托盘消息", self.tray_message_check,

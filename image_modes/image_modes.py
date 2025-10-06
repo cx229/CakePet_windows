@@ -127,7 +127,8 @@ class WalkMode(ImagesMode):
             4: ImagesMode.ImageConf(Images.Walk.S2.value, 1, 100, QPoint(-5, 0)),
         }
         self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
-        self.change_interval_max = 10 * 1000
+        self.change_interval_min = 1000
+        self.change_interval_max = 10000
 
 
 class WriggleMode(ImagesMode):

@@ -7,6 +7,7 @@ modes_standby_fix = [SitClamMode, PatHeadMode, ShakeHeadMode,
 # 移动待机模式
 modes_standby_move = [WriggleMode, WalkMode, RollMode, PullFishMode]
 
+modes_standby = modes_standby_fix + modes_standby_move
 # 模式映射,是所有模式的映射
 modes = [SitClamMode, PatHeadMode, ShakeHeadMode, SitPuffedMode,  # 坐: 静坐，摸头->摇头->炸毛
          ProbeHeadMode, LieMode, WhiteMode,  # 探头，躺，美白

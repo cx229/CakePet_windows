@@ -13,8 +13,6 @@ class ModeManager:
 
     def __init__(self, widget: QWidget):
         self.widget = widget
-        # self.current_mode = None
-
         self.cur_mode: Optional[ImagesMode] = ImagesMode(self.widget)  # 初始模式
         config.mode_name_changed.connect(self._handle_mode_change)
 

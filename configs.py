@@ -83,6 +83,7 @@ class BaseObservable(metaclass=ObservableMeta):
 
 class GlobalConfig(BaseObservable):
     """ 全局配置 """
+    img_hide_flag = False  # 是否隐藏图片
     screen_connect_enabled: bool = None  # 是否开启屏幕连接功能
     click_through_enabled: bool = None  # 是否开启点击穿透功能
     key_ctrl_l_only: bool = False  # 监听结果，是否只有Ctrl+L按下

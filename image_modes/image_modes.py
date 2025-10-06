@@ -53,7 +53,7 @@ class PatHeadMode(ImagesMode):
         self.change_interval_min = 3000
         self.change_interval_max = 4000
         self.change_prob = 0.95
-        self.next_mode_name = ShakeHeadMode.name()  # 指定下一个模式为摇头
+        self.next_mode_name = ShakeHeadMode.get_name()  # 指定下一个模式为摇头
 
 
 class ShakeHeadMode(ImagesMode):
@@ -68,7 +68,7 @@ class ShakeHeadMode(ImagesMode):
         self.change_interval_min = 1000
         self.change_interval_max = 2000
         self.change_prob = 1
-        self.next_mode_name = SitPuffedMode.name()  # 指定下一个模式为 坐,炸毛
+        self.next_mode_name = SitPuffedMode.get_name()  # 指定下一个模式为 坐,炸毛
 
 
 class WhiteMode(ImagesMode):
@@ -100,7 +100,7 @@ class ProbeHeadMode(ImagesMode):
         self.change_interval_max = 10000
         self.change_prob = 0.5
         self.transform_flag = random.choice([True, False])  # 是否需要镜像变换
-        self.next_mode_name = SitClamMode.name()  # 指定下一个模式为 坐
+        self.next_mode_name = SitClamMode.get_name()  # 指定下一个模式为 坐
 
 
 class LieMode(ImagesMode):
@@ -181,7 +181,7 @@ class PullFishMode(ImagesMode):
         }
         self.time_next_enabled = False  # 关闭定时切换
         self.change_prob = 1
-        self.next_mode_name = LieMode.name()  # 指定下一个模式为趴着
+        self.next_mode_name = LieMode.get_name()  # 指定下一个模式为趴着
 
 
 # ===================================== FollowMode 跟随模式 =====================================
@@ -216,8 +216,8 @@ class ThrowFollowMode(ImagesMode):
             6: ImagesMode.ImageConf(Images.Roll.S6.value, 1, lambda: random.randint(140, 180)),
         }
         self.time_next_enabled = False  # 关闭定时切换
-        self.next_mode_name = ThrowFallStandFollowMode.name()  # 指定下一个模式为 掉落-跟随
-        # self.next_mode_name = RollMode.name()  # 指定下一个模式为 掉落-跟随
+        self.next_mode_name = ThrowFallStandFollowMode.get_name()  # 指定下一个模式为 掉落-跟随
+        # self.next_mode_name = RollMode.name  # 指定下一个模式为 掉落-跟随
 
 
 class ThrowFallStandFollowMode(ImagesMode):
@@ -231,8 +231,8 @@ class ThrowFallStandFollowMode(ImagesMode):
             3: ImagesMode.ImageConf(Images.JumpDown.S3.value, None, lambda: random.randint(200, 250)),
         }
         self.time_next_enabled = False  # 关闭定时切换
-        self.next_mode_name = WalkMode.name()
-        # self.next_mode_name = LieMode.name() # DEV
+        self.next_mode_name = WalkMode.get_name()
+        # self.next_mode_name = LieMode.name # DEV
 
 
 class MouseFollowMode(ImagesMode):

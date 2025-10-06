@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from PyQt5.QtCore import QTimer, QSize, QPoint
 from PyQt5.QtWidgets import QLabel
 
+from configs import config
 from module_controllers.ModuleController import ModuleController
 import sys
 import win32gui
@@ -32,18 +33,40 @@ class TrayMsgController(ModuleController):
         self.label_size = QSize(1000, 24)
         self.text_label = self.get_init_label()
 
-        self.update_pos_timer = QTimer(self.widget)
+        self.update_pos_timer = QTimer(self.widget)  # 更新位置定时器，用于定时更新标签位置
         self.update_pos_interval = 250
         self.update_pos_timer.timeout.connect(self.update_position)
 
-        self.change_text_timer = QTimer(self.widget)
+        self.change_text_timer = QTimer(self.widget)  # 改变文本定时器，用于定时改变标签文本
         self.change_text_interval_fun = lambda: random.randint(1000, 3000)
         self.change_text_timer.timeout.connect(self.change_text_discontinuous)
+
+        config.tray_msg_enabled_changed.connect(self._on_tray_message_changed)
+
+        if config.tray_msg_enabled:
+            self.start()
 
     def start(self):
         self.update_pos_timer.start(self.update_pos_interval)
         self.change_text_timer.start(self.change_text_interval_fun())
         self.text_label.show()
+
+    def stop(self):
+        self.update_pos_timer.stop()
+        self.change_text_timer.stop()
+        self.text_label.hide()
+
+    def _on_tray_message_changed(self, sender, value):
+        """处理托盘消息功能切换"""
+        if value:
+            self.start()
+        else:
+            self.stop()
+
+    def stop(self):
+        self.update_pos_timer.stop()
+        self.change_text_timer.stop()
+        self.text_label.hide()
 
     def get_init_label(self) -> QLabel:
         """获取初始化的标签"""

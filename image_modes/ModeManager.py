@@ -15,7 +15,7 @@ class ModeManager:
         self.widget = widget
         # self.current_mode = None
 
-        self.cur_mode: Optional[ImagesMode] = None
+        self.cur_mode: Optional[ImagesMode] = ImagesMode(self.widget)  # 初始模式
         config.mode_name_changed.connect(self._handle_mode_change)
 
     def _handle_mode_change(self, sender, value: str):
@@ -29,9 +29,13 @@ class ModeManager:
         self.cur_mode = next_mode
         self.cur_mode.start()
 
+    def get_cur_mode(self) -> ImagesMode:
+        """获取当前模式"""
+        return self.cur_mode
+
     def get_current_mode_name(self) -> str:
         """获取当前模式名称"""
-        return config.mode_name
+        return self.cur_mode.get_name()
 
     def get_current_mode(self) -> Optional[ImagesMode]:
         """获取当前模式"""

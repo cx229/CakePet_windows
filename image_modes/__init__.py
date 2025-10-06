@@ -13,9 +13,9 @@ modes = [SitClamMode, PatHeadMode, ShakeHeadMode, SitPuffedMode,  # 坐: 静坐�
          WriggleMode, WalkMode, RollMode, PullFishMode,  # 蠕动，走，翻滚，拉鱼
          DragFollowMode, ThrowFollowMode, ThrowFallStandFollowMode, MouseFollowMode  # 鼠标事件：拖拽，抛掷->落地，鼠标跟随
          ]
-modes_map = {str(m.name()): m for m in modes}
+modes_map = {str(m.get_name()): m for m in modes}
 
-init_mode_name = SitClamMode.name()  # 初始模式
+init_mode_name = SitClamMode.get_name()  # 初始模式
 
 # modes_standby_fix = [ ProbeHeadMode,LieMode]  # 固定待机模式
 # modes_standby_move = [ WriggleMode, PullFishMode]  # 移动待机模式

@@ -1,14 +1,15 @@
 .idea/
 .vscode/
+__pycache__/
 
-dev/
+_dev/
 logs/
 
 # 打包
 dist/
 build/
 *.spec
-version/
+_version/
 
 # 配置文件
 config.yaml

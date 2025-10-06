@@ -7,8 +7,8 @@ from itertools import chain
 @dataclass(frozen=True)
 class TrayMsgMeta:
     """托盘消息元数据"""
-    key: str = ""
-    text: str = ""
+    key: str
+    text: str
     base_ms: int = 5000  # 基础持续时间（毫秒）,为0时表示持续显示
     random_ms: int = 0  # 随机增量持续时间（毫秒）
     priority: int = 5  # 优先级(0-10)，值越大越优先显示

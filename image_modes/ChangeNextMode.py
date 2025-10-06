@@ -18,7 +18,7 @@ def get_random_next_mode_name(current_mode_name: str, available_modes_name: list
         # 如果不是鼠标跟随模式，则添加移动模式
         if not config.mouse_follow_enabled:
             modes += modes_standby_move
-        modes_name = [str(m.name()) for m in modes]
+        modes_name = [str(m.get_name()) for m in modes]
         available_modes_name = [name for name in modes_name if name != current_mode_name]  # 排除当前模式
     if available_modes_name:
         next_mode_name = random.choice(available_modes_name)  # 随机选择下一个模式
@@ -32,13 +32,13 @@ class NextChangeMode(ImageMode):
     title: str = "切换类"
     def __init__(self, widget: QWidget):
         super().__init__(widget)
-        self.next_mode_name = get_random_next_mode_name(self.name())
+        self.next_mode_name = get_random_next_mode_name(self.get_name())
 
     def change_mode(self):
         if self.next_mode_name is not None:
             config.mode_name = self.next_mode_name  # 切换到下一个模式
         else:
-            logger.info(f"没有指定下一个模式，当前模式 {self.name()} 保持不变")
+            logger.info(f"没有指定下一个模式，当前模式 {self.get_name()} 保持不变")
 
 
 class TimerNextChange(NextChangeMode):
@@ -51,6 +51,9 @@ class TimerNextChange(NextChangeMode):
         self.change_interval_max = interval_max  # 随机间隔时间（毫秒）
         self.change_prob = prob  # 随机概率（0-1之间）
         self.timer = QTimer(self.widget)  # 定时器
+
+    def start(self):
+        """开始随机下一个"""
         if self.time_next_enabled:
             self.timer.timeout.connect(self.time_next)  # 连接超时信号到下一个方法
 
@@ -63,10 +66,10 @@ class TimerNextChange(NextChangeMode):
     def time_next(self):
         """概率下一个"""
         if random.random() < self.change_prob and not config.is_drag_follow and not config.is_mouse_follow:
-            logger.info(f"随机概率 {self.change_prob} 触发，当前模式 {self.name()} 切换到 {self.next_mode_name}")
+            logger.info(f"随机概率 {self.change_prob} 触发，当前模式 {self.get_name()} 切换到 {self.next_mode_name}")
             self.change_mode()
         else:
-            logger.info(f"随机概率 {self.change_prob} 未触发，当前模式 {self.name()} 保持不变")
+            logger.info(f"随机概率 {self.change_prob} 未触发，当前模式 {self.get_name()} 保持不变")
             self.timer.start(self.get_interval())  # 启动定时器
 
     def restart(self):

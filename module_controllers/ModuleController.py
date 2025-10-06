@@ -8,24 +8,24 @@ class ModuleController(ABC):
 
     def start(self):
         """启动 控制器"""
-        logger.info(f"模块控制器 {self.name()} 启动")
+        logger.info(f"模块控制器 {self.name} 启动")
 
     def restart(self):
         """重新开始 控制器"""
-        logger.info(f"模块控制器 {self.name()} 重新开始")
+        logger.info(f"模块控制器 {self.name} 重新开始")
 
     def pause(self):
         """暂停 控制器"""
-        logger.info(f"模块控制器 {self.name()} 暂停")
+        logger.info(f"模块控制器 {self.name} 暂停")
 
     def resume(self):
         """恢复 控制器"""
-        logger.info(f"模块控制器 {self.name()} 恢复")
+        logger.info(f"模块控制器 {self.name} 恢复")
 
     def stop(self):
         """停止 控制器"""
-        logger.info(f"模块控制器 {self.name()} 停止")
+        logger.info(f"模块控制器 {self.name} 停止")
 
-    @classmethod
-    def name(cls) -> str:
-        return str(cls.__name__)
+    @property
+    def name(self) -> str:
+        return str(self.__class__.__name__)

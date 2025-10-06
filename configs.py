@@ -81,7 +81,7 @@ class BaseObservable(metaclass=ObservableMeta):
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '{key}'")
 
 
-class Config(BaseObservable):
+class GlobalConfig(BaseObservable):
     """ 全局配置 """
     screen_connect_enabled: bool = None  # 是否开启屏幕连接功能
     click_through_enabled: bool = None  # 是否开启点击穿透功能
@@ -99,6 +99,8 @@ class Config(BaseObservable):
     is_drag_follow = False  # 是否正在拖动
 
     throw_follow_enabled: bool = None
+    throw_follow_rebound_enabled: bool = None  # 是否开启反弹功能
+    throw_follow_rebound_ratio: float = None  # 反弹系数
     is_throw_follow = False  # 是否正在下落
     gravity_enable: bool = True  # 是否开启重力功能
     throw_follow_acceleration = QPointF(0, 0.02)  # 抛掷重力速度, 单位: 像素/s2
@@ -107,7 +109,7 @@ class Config(BaseObservable):
 
     mouse_follow_enabled: bool = None  # 是否开启跟随鼠标
     is_mouse_follow = False  # 是否正在跟随鼠标
-    mouse_follow_speed = 5  # 每次的跟随，移动的像素点长度，跟随速度，单位:像素/s
+    mouse_follow_speed = None  # 每次的跟随，移动的像素点长度，跟随速度，单位:像素/s
 
     """ 放大模式配置 """
     bigger_enabled: bool = None  # 是否开启放大功能
@@ -119,30 +121,32 @@ class Config(BaseObservable):
     tray_msg_enabled: bool = None  # 是否开启托盘消息
 
 
-
 config_path = "config.yaml"
-config = Config()
+config = GlobalConfig()
+
+
+default_config = {
+    "size_ratio_base": 1.5,
+    "click_through_enabled": False,
+    "screen_connect_enabled": True,
+    "drag_follow_enabled": True,
+    "throw_follow_enabled": True,
+    "throw_follow_rebound_enabled": True,
+    "throw_follow_rebound_ratio": 0.8,  # 反弹系数
+    "mouse_follow_enabled": False,
+    "mouse_follow_speed": 5,
+    "bigger_enabled": True,
+    "bigger_wait_time": 45 * 60 * 1000,  # 45 minutes in milliseconds
+    "bigger_max_size_ratio": 10.0,
+    "tray_msg_enabled": True,
+}
 
 
 def load_config():
-    # Default configuration values
-    default_config = {
-        "size_ratio_base": 1.0,
-        "click_through_enabled": True,
-        "screen_connect_enabled": True,
-        "drag_follow_enabled": True,
-        "throw_follow_enabled": True,
-        "mouse_follow_enabled": True,
-        "bigger_enabled": True,
-        "bigger_wait_time": 45 * 60 * 1000,  # 45 minutes in milliseconds
-        "bigger_max_size_ratio": 10.0
-    }
-
     try:
         with open(config_path, 'r') as f:
             yaml_config = yaml.safe_load(f) or {}
             yaml_config = {k: v for k, v in yaml_config.items() if v is not None}
-
             # Update default values with any valid values from the config file
             for key, default_value in default_config.items():
                 setattr(config, key, yaml_config.get(key, default_value))
@@ -157,45 +161,19 @@ def load_config():
             setattr(config, key, value)
 
 
-# def load_config():
-#     with open(config_path, 'r') as f:
-#         yaml_config = yaml.safe_load(f) or {}
-#         yaml_config = {k: v for k, v in yaml_config.items() if v is not None}
-#         if yaml_config:
-#             config.size_ratio_base = yaml_config.get("size_ratio_base", 1.0)
-#             config.click_through_enabled = yaml_config.get("click_through_enabled", True)
-#             config.screen_connect_enabled = yaml_config.get("screen_connect_enabled", True)
-#             config.drag_follow_enabled = yaml_config.get("drag_follow_enabled", True)
-#             config.throw_follow_enabled = yaml_config.get("throw_follow_enabled", True)
-#             config.mouse_follow_enabled = yaml_config.get("mouse_follow_enabled", True)
-#             config.bigger_enabled = yaml_config.get("bigger_enabled", True)
-#             config.bigger_wait_time = yaml_config.get("bigger_wait_time", 45 * 60 * 1000)
-#             config.bigger_max_size_ratio = yaml_config.get("bigger_max_size_ratio", 10.0)
-
-
 def save_config(sender, value):
+    # 自动保存所有配置项，避免手动列出每个字段
+    config_dict = {key: getattr(config, key)
+                   for key in default_config.keys()
+                   if hasattr(config, key)}
+
     with open(config_path, 'w', encoding='utf-8') as f:
-        yaml_config = {
-            "size_ratio_base": config.size_ratio_base,
-            "click_through_enabled": config.click_through_enabled,
-            "screen_connect_enabled": config.screen_connect_enabled,
-            "drag_follow_enabled": config.drag_follow_enabled,
-            "throw_follow_enabled": config.throw_follow_enabled,
-            "mouse_follow_enabled": config.mouse_follow_enabled,
-            "bigger_enabled": config.bigger_enabled,
-            "bigger_wait_time": config.bigger_wait_time,
-            "bigger_max_size_ratio": config.bigger_max_size_ratio,
-        }
-        yaml.safe_dump(yaml_config, f, default_flow_style=False, sort_keys=False)
+        yaml.safe_dump(config_dict, f, default_flow_style=False, sort_keys=False)
 
 
 load_config()
-config.size_ratio_base_changed.connect(save_config)
-config.click_through_enabled_changed.connect(save_config)
-config.screen_connect_enabled_changed.connect(save_config)
-config.drag_follow_enabled_changed.connect(save_config)
-config.throw_follow_enabled_changed.connect(save_config)
-config.mouse_follow_enabled_changed.connect(save_config)
-config.bigger_enabled_changed.connect(save_config)
-config.bigger_wait_time_changed.connect(save_config)
-config.bigger_max_size_ratio_changed.connect(save_config)
+
+# 自动连接所有配置项的changed信号
+for key in default_config.keys():
+    if hasattr(config, f"{key}_changed"):
+        getattr(config, f"{key}_changed").connect(save_config)

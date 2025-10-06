@@ -171,8 +171,8 @@ class Menu(QMenu):
 
     def _on_img_mode_clicked(self, img_mode: image_modes.ImagesMode):
         """处理子菜单项点击事件"""
-        logger.info(f"触发指定图片模式: {img_mode.name()}-{img_mode.title}")
-        config.mode_name = img_mode.name()
+        logger.info(f"触发指定图片模式: {img_mode.get_title_name()}")
+        config.mode_name = img_mode.get_name()
 
     def _init_img_mode_submenu(self):
         """初始化图片模式子菜单"""

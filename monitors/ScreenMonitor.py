@@ -1,12 +1,15 @@
 import ctypes
 from dataclasses import dataclass
-from PyQt5.QtCore import QRect, QObject, pyqtSignal, QAbstractNativeEventFilter, QPoint
+from typing import Optional
+
+from PyQt5.QtCore import QRect, QObject, pyqtSignal, QAbstractNativeEventFilter, QPoint, QPointF
 from PyQt5.QtWidgets import QApplication, QWidget
 import win32api
 import win32con
 import win32gui
 from ctypes import wintypes
 
+from configs import config
 from utils.log_util import logger
 
 
@@ -44,7 +47,7 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
         return [f"屏幕工作区域 {i}: {screen.work_rect.getRect()}" for i, screen in enumerate(self.workarea_infos)]
 
     def get_screens_tuple_list(self):
-        return [f"屏幕 {i}: {(screen.screen_rect.getRect(),screen.work_rect.getRect())}" for i, screen in enumerate(self.workarea_infos)]
+        return [f"屏幕 {i}: {(screen.screen_rect.getRect(), screen.work_rect.getRect())}" for i, screen in enumerate(self.workarea_infos)]
 
     def _setup_dpi_awareness(self):
         try:
@@ -147,28 +150,106 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
         return False, 0
 
 
-def get_cur_work_bottom(anchor_pos: QPoint, screen_monitor: ScreenMonitor):
+def adjust_offset_screen(offset: QPoint, cur_anchor_pos: QPoint, screen_monitor: ScreenMonitor):
+    if config.screen_connect_enabled:  # 循环屏幕
+        new_offset = adjust_offset_screen_connect(offset, cur_anchor_pos, screen_monitor)  # 循环屏幕
+    else:
+        new_offset = adjust_offset_screen_unconnect(offset, cur_anchor_pos, screen_monitor)  # 普通移动，确保不会超出本屏幕
+
+    return new_offset
+
+
+def adjust_offset_screen_unconnect(offset: QPoint, cur_anchor_pos: QPoint, screen_monitor: ScreenMonitor):
+    """调整偏移量，确保图片不会超出桌面范围"""
+    new_offset = QPoint(offset)
+    target_anchor_pos = cur_anchor_pos + new_offset
+    left_screen = screen_monitor.get_left_screen()
+    if target_anchor_pos.x() < left_screen.screen_rect.left():
+        new_offset.setX(left_screen.screen_rect.left() - cur_anchor_pos.x())
+
+    right_screen = screen_monitor.get_right_screen()
+    if target_anchor_pos.x() > right_screen.screen_rect.right():
+        new_offset.setX(right_screen.screen_rect.right() - cur_anchor_pos.x())
+    return new_offset
+
+
+def adjust_offset_screen_connect(offset: QPoint, cur_anchor_pos: QPoint, screen_monitor: ScreenMonitor):
+    """调整偏移量，实现循环屏幕效果"""
+    new_offset = QPoint(offset)
+    target_anchor_pos = cur_anchor_pos + new_offset
+
+    # 获取左右屏幕信息
+    left_screen = screen_monitor.get_left_screen()
+    right_screen = screen_monitor.get_right_screen()
+
+    # 如果移出左边界，从右边界出现
+    if target_anchor_pos.x() < left_screen.screen_rect.left():
+        overflow = left_screen.screen_rect.left() - target_anchor_pos.x()
+        new_x = right_screen.screen_rect.right() - overflow
+        new_offset.setX(new_x - cur_anchor_pos.x())
+
+    # 如果移出右边界，从左边界出现
+    elif target_anchor_pos.x() > right_screen.screen_rect.right():
+        overflow = target_anchor_pos.x() - right_screen.screen_rect.right()
+        new_x = left_screen.screen_rect.left() + overflow
+        new_offset.setX(new_x - cur_anchor_pos.x())
+
+    return new_offset
+
+
+def get_cur_work_by_xy_f(pos_f: QPointF, screen_monitor: ScreenMonitor) -> Optional[QRect]:
+    """根据x,y坐标获取当前工作区域(第一个匹配的屏幕)"""
+    work_area_infos = screen_monitor.get_screens()
+    for work_area_info in work_area_infos:
+        work_rect = work_area_info.work_rect
+        if work_rect.contains(pos_f.toPoint()):
+            return work_area_info.work_rect
+    return None
+
+
+def get_cur_screen_work(pos: QPoint, screen_monitor: ScreenMonitor) -> QRect:
     """
-    获取当前工作区域的底部坐标
+    获取当前屏幕的工作区域
     1. 首先尝试根据锚点的x,y坐标找到完全包含它的屏幕
     2. 如果找不到，则仅根据x坐标判断所在屏幕
-    :return: 所在屏幕底部坐标
+    3. 如果仍然找不到，则返回第一个屏幕的工作区域
+    4. 如果未找到任何工作区域，则返回默认值(2560x1440)
+    :return: 所在屏幕的工作区域
     """
-    cur_anchor_pos = anchor_pos
-    work_area_infos = screen_monitor.get_screens()
 
-    # 首先尝试精确匹配（x和y都匹配）
-    for work_area_info in work_area_infos:
-        if work_area_info.screen_rect.contains(cur_anchor_pos):
-            return work_area_info.work_rect.bottom()
+    def get_cur_work_by_xy(pos: QPoint, screen_monitor: ScreenMonitor) -> Optional[QRect]:
+        """根据x,y坐标获取当前工作区域(第一个匹配的屏幕)"""
+        work_area_infos = screen_monitor.get_screens()
+        for work_area_info in work_area_infos:
+            screen_rect = work_area_info.screen_rect
+            if screen_rect.contains(pos):
+                return work_area_info.work_rect
+        return None
 
-    # 如果没有精确匹配，则仅根据x坐标匹配
-    for work_area_info in work_area_infos:
-        screen_rect = work_area_info.screen_rect
-        if screen_rect.left() <= cur_anchor_pos.x() <= screen_rect.right():
-            return work_area_info.work_rect.bottom()
+    def get_cur_work_by_x(pos: QPoint, screen_monitor: ScreenMonitor) -> Optional[QRect]:
+        """根据x坐标获取当前工作区域(第一个匹配的屏幕)"""
+        work_area_infos = screen_monitor.get_screens()
+        for work_area_info in work_area_infos:
+            screen_rect = work_area_info.screen_rect
+            if screen_rect.left() <= pos.x() <= screen_rect.right():
+                return work_area_info.work_rect
+        return None
 
-    raise ValueError(f"未找到包含锚点 {cur_anchor_pos} 的工作区域")
+    if screen_monitor.get_screens():
+        cur_work = get_cur_work_by_xy(pos, screen_monitor)
+        if not cur_work:
+            cur_work = get_cur_work_by_x(pos, screen_monitor)
+            if not cur_work:
+                logger.error(f"未找到包含点 {pos} 的工作区域,返回第一个屏幕的工作区域")
+                cur_work = screen_monitor.get_screens()[0].work_rect
+        return cur_work
+    return QRect(0, 0, 2560, 1440)  # 未找到任何工作区域时，返回默认值
+
+
+def get_cur_screen_work_bottom(pos: QPoint, screen_monitor: ScreenMonitor) -> int:
+    # 获取当前屏幕的工作区域底部坐标
+    cur_work = get_cur_screen_work(pos, screen_monitor)
+    return cur_work.bottom()
 
 
 # 使用示例

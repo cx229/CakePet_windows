@@ -8,7 +8,7 @@ from PyQt5.QtGui import QPixmap, QTransform, QCursor
 from module_controllers.ClickThroughController import ClickThroughController
 from module_controllers.TrayMsgController import TrayMsgController
 from monitors.KeyMonitor import KeyMonitor
-from monitors.ScreenMonitor import ScreenMonitor
+from monitors.ScreenMonitor import ScreenMonitor, adjust_offset_screen, get_cur_screen_work_bottom
 from image_modes.ModeManager import ModeManager
 from module_controllers.MouseFollowController import MouseFollowController
 from resmeta.image_meta import ImageMeta
@@ -76,7 +76,7 @@ class FollowAndDragWidget(QWidget):
         self.size_growing_controller.start()  # 启动大小增长控制器，开始计时
         self.follow_controller.start()  # 启动鼠标跟随控制器，开始跟随鼠标
         self.click_through_controller.start()  # 启动点击穿透控制器，开始设置窗口点击穿透
-        self.tray_msg_controller.start()  # 启动托盘消息控制器，开始显示消息
+        # self.tray_msg_controller.start()  # 启动托盘消息控制器，开始显示消息
 
     def get_cursor_pos(self) -> QPointF:
         """获取当前鼠标位置，相对窗口坐标"""
@@ -122,56 +122,17 @@ class FollowAndDragWidget(QWidget):
         self.image_label.resize(scaled_pixmap.size())  # 调整图片标签大小为缩放后的图片大小
 
         # print(f"offset:{offset},offset*2.526:{offset*2.526}")
-        new_offset = self.adjust_offset_screen_connect(offset*cur_size_r, config.anchor_pos)
+        new_offset = adjust_offset_screen(offset * cur_size_r, config.anchor_pos, self.screen_monitor)
         config.anchor_pos += new_offset
         new_pos = config.anchor_pos - scaled_anchor
         # print(f"设置图片: {img_meta.path}, 大小比例: {self.size_ratio}, 锚点: {scaled_anchor}, 偏移量: {new_offset}, offset: {offset}")
 
         self.image_label.move(new_pos)
 
-    def adjust_offset(self, offset: QPoint, cur_anchor_pos: QPoint):
-        """调整偏移量，确保图片不会超出桌面范围"""
-        new_offset = QPoint(offset)
-        target_anchor_pos = cur_anchor_pos + new_offset
-        left_screen = self.screen_monitor.get_left_screen()
-        if target_anchor_pos.x() < left_screen.screen_rect.left():
-            new_offset.setX(left_screen.screen_rect.left() - config.anchor_pos.x())
-
-        right_screen = self.screen_monitor.get_right_screen()
-        if target_anchor_pos.x() > right_screen.screen_rect.right():
-            new_offset.setX(right_screen.screen_rect.right() - config.anchor_pos.x())
-        return new_offset
-
-    def adjust_offset_screen_connect(self, offset: QPoint, cur_anchor_pos: QPoint):
-        """调整偏移量，实现循环屏幕效果"""
-        new_offset = QPoint(offset)
-        target_anchor_pos = cur_anchor_pos + new_offset
-
-        # 获取左右屏幕信息
-        left_screen = self.screen_monitor.get_left_screen()
-        right_screen = self.screen_monitor.get_right_screen()
-
-        # 如果移出左边界，从右边界出现
-        if target_anchor_pos.x() < left_screen.screen_rect.left():
-            overflow = left_screen.screen_rect.left() - target_anchor_pos.x()
-            new_x = right_screen.screen_rect.right() - overflow
-            new_offset.setX(new_x - cur_anchor_pos.x())
-
-        # 如果移出右边界，从左边界出现
-        elif target_anchor_pos.x() > right_screen.screen_rect.right():
-            overflow = target_anchor_pos.x() - right_screen.screen_rect.right()
-            new_x = left_screen.screen_rect.left() + overflow
-            new_offset.setX(new_x - cur_anchor_pos.x())
-
-        return new_offset
 
     def img_move_by_offset(self, offset: QPoint):
         """根据偏移量移动图片,同时更新锚点坐标"""
-        if config.screen_connect_enabled:  # 循环屏幕
-            new_offset = self.adjust_offset_screen_connect(offset, config.anchor_pos)  # 循环屏幕
-        else:
-            new_offset = self.adjust_offset(offset, config.anchor_pos)  # 普通移动，确保不会超出本屏幕
-
+        new_offset = adjust_offset_screen(offset, config.anchor_pos, self.screen_monitor)
         self.image_label.move(self.image_label.pos() + new_offset)
         config.anchor_pos += new_offset
 

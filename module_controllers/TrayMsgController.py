@@ -41,7 +41,10 @@ class TrayMsgController(ModuleController):
         self.change_text_interval_fun = lambda: random.randint(1000, 3000)
         self.change_text_timer.timeout.connect(self.change_text_discontinuous)
 
-        config.tray_msg_enabled_changed.connect(self._on_tray_message_changed)
+        config.tray_msg_enabled_changed.connect(self._on_tray_msg_enabled_changed)  # 监听托盘消息功能切换
+        config.tray_msg_mode_tray_changed.connect(self._on_tray_msg_mode_tray_changed)  # 监听托盘消息显示模式切换
+        config.tray_msg_color_white_changed.connect(self._on_tray_msg_color_white_changed)  # 监听托盘消息颜色切换
+        config.tray_msg_margin_changed.connect(self._on_tray_msg_margin_changed)  # 监听托盘消息边距切换
 
         if config.tray_msg_enabled:
             self.start()
@@ -56,31 +59,73 @@ class TrayMsgController(ModuleController):
         self.change_text_timer.stop()
         self.text_label.hide()
 
-    def _on_tray_message_changed(self, sender, value):
+    def get_style(self,color= "white",margin_left= "0px",margin_right= "0px"):
+        """获取托盘消息样式"""
+        return f"""
+                    QLabel {{
+                        font-size: 20px;
+                        padding: 2px 8px;
+                        font-family: "Microsoft YaHei";
+                        color: {color};
+                        margin-left: {margin_left};
+                        margin-right: {margin_right};
+                    }}
+                """
+    def _on_tray_msg_enabled_changed(self, sender, value):
         """处理托盘消息功能切换"""
         if value:
             self.start()
         else:
             self.stop()
 
-    def stop(self):
-        self.update_pos_timer.stop()
-        self.change_text_timer.stop()
-        self.text_label.hide()
+    def _on_tray_msg_mode_tray_changed(self, sender, value):
+        """处理托盘消息显示模式切换"""
+        self.update_position()
+
+    def _on_tray_msg_color_white_changed(self, sender, value):
+        """处理托盘消息颜色切换"""
+        if value:
+            color = "white"
+        else:
+            color = "black"
+        # self.text_label.setStyleSheet(f"QLabel {{ color: {color}; }}")
+        # self.text_label.setProperty("color", color)
+        # self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
+        # self.text_label.style().polish(self.text_label)
+        # current_style = self.text_label.styleSheet()
+        style= self.get_style(color=color)
+
+        # # 移除旧的 color 设置（如果有）
+        # import re
+        # current_style = re.sub(r"color:\s*[^;]+;", "", current_style)
+        #
+        # # 添加新的 color
+        # new_style = f"QLabel {{ {current_style} color: {color}; }}"
+        # print(new_style)
+        self.text_label.setStyleSheet(style)
+        self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
+        self.text_label.style().polish(self.text_label)
+
+
+    def _on_tray_msg_margin_changed(self, sender, value):
+        """处理托盘消息外边距切换（仅修改左右边距）"""
+        # self.text_label.setProperty("margin-left", f"{value}px")
+        # self.text_label.setProperty("margin-right", f"{value}px")
+        # self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
+        # self.text_label.style().polish(self.text_label)
+
+        # self.text_label.setStyleSheet(f"QLabel {{ padding-left: {value}px; padding-right: {value}px; }}")
+        style = self.get_style(margin_left=f"{value}px", margin_right=f"{value}px")
+        self.text_label.setStyleSheet(style)
+        self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
+        self.text_label.style().polish(self.text_label)
 
     def get_init_label(self) -> QLabel:
         """获取初始化的标签"""
         label = QLabel(self.widget)
         label.lower()
         label.setMinimumSize(self.label_size)
-        label.setStyleSheet("""
-                    QLabel {
-                        color: white;
-                        font-size: 20px;
-                        padding: 2px 8px;
-                        font-family: "Microsoft YaHei"; 
-                    }
-                """)
+        label.setStyleSheet(self.get_style())
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setText("芝麻酥")
 
@@ -103,9 +148,16 @@ class TrayMsgController(ModuleController):
 
     def calculate_position(self, taskbar_rect, tray_rect):
         """计算窗口应该放置的位置"""
-        x = tray_rect[0] - self.text_label.width() - 5  # 左侧预留5像素
-        taskbar_height = taskbar_rect[3] - taskbar_rect[1]  # 任务栏高度
-        y = taskbar_rect[1] + (taskbar_height - self.text_label.height()) // 2  # 垂直居中
+        if config.tray_msg_mode_tray:
+            x = tray_rect[0] - self.text_label.width() - 5  # 左侧预留5像素
+            self.text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            taskbar_height = taskbar_rect[3] - taskbar_rect[1]  # 任务栏高度
+            y = taskbar_rect[1] + (taskbar_height - self.text_label.height()) // 2  # 垂直居中
+        else: # 非托盘模式,在任务栏左侧显示
+            x = taskbar_rect[0] + 5  # 左侧预留5像素
+            self.text_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            taskbar_height = taskbar_rect[3] - taskbar_rect[1]  # 任务栏高度
+            y = taskbar_rect[1] + (taskbar_height - self.text_label.height()) // 2  # 垂直居中
         # print(f"calculate_position, x: {x}, y: {y}")
         return x, y
 

@@ -120,6 +120,9 @@ class GlobalConfig(BaseObservable):
 
     """ 托盘消息配置 """
     tray_msg_enabled: bool = None  # 是否开启托盘消息
+    tray_msg_mode_tray: bool = None  # True 表示托盘左侧显示，False 表示任务栏左侧显示
+    tray_msg_color_white: bool = None  # 托盘消息是否为白色
+    tray_msg_margin: int = None  # 托盘消息与图标之间的间距，默认0
 
 
 config_path = "config.yaml"
@@ -140,6 +143,9 @@ default_config = {
     "bigger_wait_time": 45 * 60 * 1000,  # 45 minutes in milliseconds
     "bigger_max_size_ratio": 10.0,
     "tray_msg_enabled": True,
+    "tray_msg_mode_tray": True,
+    "tray_msg_color_white": True,
+    "tray_msg_margin": 0,
 }
 
 

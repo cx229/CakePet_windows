@@ -2,12 +2,15 @@ import os
 import traceback
 
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QApplication, QLabel, QWidget, QSystemTrayIcon,
-                             QMenu, QAction, QDialog, QVBoxLayout, QSlider,
-                             QCheckBox, QPushButton, QMessageBox, QHBoxLayout, QTabWidget, QGroupBox, QScrollArea, QSizePolicy)
+from PyQt5.QtWidgets import (QLabel, QWidget,
+                             QDialog, QVBoxLayout, QSlider,
+                             QCheckBox, QTabWidget, QScrollArea, )
 from PyQt5.QtCore import Qt, QTimer
 
 from configs import config
+from settings.TabWidget import TabWidget
+from settings.create_setting_widgets import create_item_container, create_slider_item, create_group_title, create_setting_item
+from settings.settings_styles import settings_set_style, settings_tab_style
 from utils.log_util import logger
 from utils.pos_util import point_to_tuple
 
@@ -19,6 +22,9 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setModal(False)  # 关键设置：改为非模态对话框
         self.parent = parent
+        # self.hide()
+        # self.setAttribute(Qt.WA_ShowWithoutActivating)  # 1. 防止激活闪烁
+        # self.setWindowFlags(self.windowFlags() | Qt.WindowDoesNotAcceptFocus)  # 2. 避免焦点变化
         self._init_ui()
 
         # 设置窗口图标
@@ -36,28 +42,21 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("设置页 ")
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         self.setFixedSize(1200, 1200)
-
-        # 创建选项卡
-        self.tab_widget = QTabWidget(self)
-
-        # 第一页 - 纯设置页（无实时信息）
-        self.settings_tab = QWidget()
-        self._init_settings_tab()
-
-        # 第二页 - 纯信息监控页（无设置控件）
-        self.info_tab = QWidget()
-        self._init_info_tab()
-
-        self.tab_widget.addTab(self.settings_tab, "设置")
-        self.tab_widget.addTab(self.info_tab, "监控")
-
         main_layout = QVBoxLayout()
+        # 替换原来的 tab_widget
+        self.tab_widget = TabWidget()
+        self.tab_widget.addTab("设置", self.createSettingsTab())
+        self.tab_widget.addTab("监控", self.createInfoTab())
+
         main_layout.addWidget(self.tab_widget)
+
         self.setLayout(main_layout)
 
-    def _init_settings_tab(self):
+    def createSettingsTab(self):
         """初始化纯设置页（淡蓝色主题+修复布局）"""
         # 创建主容器和滚动区域
+        self.settings_tab = QWidget()
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -74,284 +73,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(0)
 
         # 淡蓝色主题样式表
-        self.setStyleSheet("""
-            /* 全局样式 */
-            QWidget {
-                font-family: "Microsoft YaHei";
-                font-size: 18px;
-                background-color: #f8fbff;
-                color: #333333;
-            }
-
-            QScrollArea {
-                background-color: #f8fbff;
-                border: none;
-            }
-
-            QScrollBar:vertical {
-                background-color: #e6f0ff;
-                width: 10px;
-                border-radius: 5px;
-            }
-
-            QScrollBar::handle:vertical {
-                background-color: #4a90e2;
-                border-radius: 5px;
-                min-height: 30px;
-            }
-
-            QScrollBar::handle:vertical:hover {
-                background-color: #3a80d2;
-            }
-
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-
-            /* 设置项容器 */
-            .setting-item {
-                background-color: #ffffff;
-                border-bottom: 1px solid #e6f0ff;
-                min-height: 70px;
-            }
-
-            .setting-item:last-child {
-                border-bottom: none;
-            }
-
-            /* 分组标题 */
-            .group-title {
-                font-size: 18px;
-                font-weight: bold;
-                color: #2c6bb0;
-                background-color: #e6f0ff;
-                padding: 20px 25px;
-                border-bottom: 1px solid #d0e0ff;
-                margin: 0px;
-            }
-
-            /* 主标题样式 */
-            .setting-title {
-                font-size: 22px;
-                color: #333333;
-                font-weight: normal;
-                margin: 0px;
-                padding: 0px;
-                min-height: 25px;
-            }
-
-            /* 说明文字样式 */
-            .setting-description {
-                font-size: 18px;
-                color: #666666;
-                margin: 0px 0px 0px 0px;  /* 减小标题和说明的间距 */
-                padding: 0px;
-                line-height: 1.5;
-                font-weight: normal;
-                min-height: 22px;
-            }
-
-            /* 状态文字 */
-            .status-text {
-                font-size: 16px;
-                color: #ff6b6b;
-                margin: 5px 0px 0px 0px;
-                padding: 0px;
-                font-style: italic;
-            }
-
-            /* 开关样式 */
-            QCheckBox {
-                spacing: 0px;
-                padding: 0px;
-                margin: 0px;
-            }
-
-            QCheckBox::indicator {
-                width: 50px;
-                height: 20px;
-                border-radius: 16px;
-                background-color: #cccccc;
-                border: 5px solid #cccccc;
-            }
-
-            QCheckBox::indicator:checked {
-                background-color: #4a90e2;
-                border-color: #4a90e2;
-            }
-
-            QCheckBox::indicator:unchecked {
-                background-color: #cccccc;
-                border-color: #cccccc;
-            }
-
-            /* 开关滑块 */
-            QCheckBox::indicator:checked::after {
-                content: "";
-                position: absolute;
-                left: 32px;
-                width: 28px;
-                height: 28px;
-                border-radius: 14px;
-                background-color: white;
-                margin: 2px;
-            }
-
-            QCheckBox::indicator:unchecked::after {
-                content: "";
-                position: absolute;
-                left: 2px;
-                width: 28px;
-                height: 28px;
-                border-radius: 14px;
-                background-color: white;
-                margin: 2px;
-            }
-
-            /* 滑块样式 */
-            QSlider::groove:horizontal {
-                height: 6px;
-                background: #e0e0e0;
-                border-radius: 6px;
-                margin: 0px;
-            }
-
-            QSlider::handle:horizontal {
-                width: 24px;
-                height: 24px;
-                margin: -9px 0;
-                background: #ffffff;
-                border: 5px solid #4a90e2;
-                border-radius: 12px;
-            }
-
-            QSlider::sub-page:horizontal {
-                background: #4a90e2;
-                border-radius: 5px;
-            }
-
-            /* 数值标签 */
-            .value-label {
-                font-size: 18px;
-                color: #4a90e2;
-                min-width: 80px;
-                text-align: center;
-                margin: 0px;
-                padding: 0px;
-                font-weight: bold;
-            }
-
-            /* 滑块容器 */
-            .slider-container {
-                background-color: transparent;
-                padding: 0px;
-                margin: 0px;
-            }
-        """)
-
-        def create_setting_item(title, switch, description=None, status=None, has_border=True):
-            """创建单个设置项"""
-            item_widget = QWidget()
-            item_widget.setProperty("class", "setting-item")
-            item_layout = QHBoxLayout()
-            item_layout.setContentsMargins(25, 20, 25, 20)
-
-            # 左侧文字区域 - 使用QWidget作为容器，设置尺寸策略
-            text_widget = QWidget()
-            text_layout = QVBoxLayout()
-            text_layout.setContentsMargins(0, 0, 0, 0)
-            text_widget.setLayout(text_layout)
-
-            # 设置尺寸策略，允许水平扩展
-            text_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
-            # 标题
-            title_label = QLabel(title)
-            title_label.setProperty("class", "setting-title")
-            title_label.setWordWrap(True)
-            title_label.setMinimumHeight(30)
-            text_layout.addWidget(title_label)
-
-            # 说明文字
-            if description:
-                desc_label = QLabel(description)
-                desc_label.setProperty("class", "setting-description")
-                desc_label.setWordWrap(True)
-                desc_label.setMinimumHeight(40)
-                text_layout.addWidget(desc_label)
-
-            # 状态文字
-            if status:
-                status_label = QLabel(status)
-                status_label.setProperty("class", "status-text")
-                status_label.setMinimumHeight(25)
-                text_layout.addWidget(status_label)
-
-            text_layout.addStretch()
-
-            # 右侧开关 - 固定宽度
-            switch.setFixedWidth(80)  # 开关固定宽度
-
-            # 添加控件到主布局
-            item_layout.addWidget(text_widget, stretch=1)  # 文字区域可扩展
-            item_layout.addWidget(switch, stretch=0, alignment=Qt.AlignRight)  # 开关固定宽度
-
-            item_widget.setLayout(item_layout)
-            return item_widget
-
-        def create_slider_item(title, slider, value_label, description=None, has_border=True):
-            """创建滑块设置项"""
-            item_widget = QWidget()
-            item_widget.setProperty("class", "setting-item")
-            item_layout = QVBoxLayout()
-            item_layout.setContentsMargins(25, 20, 25, 20)
-            item_layout.setSpacing(2)
-
-            # 顶部标题行 - 使用水平布局
-            top_layout = QHBoxLayout()
-            top_layout.setContentsMargins(0, 0, 0, 0)
-
-            # 标题标签 - 允许扩展
-            title_label = QLabel(title)
-            title_label.setProperty("class", "setting-title")
-            title_label.setWordWrap(True)
-            title_label.setMinimumHeight(30)
-            top_layout.addWidget(title_label, stretch=1)  # 标题可扩展
-
-            # 数值标签 - 固定宽度
-            value_label.setProperty("class", "value-label")
-            value_label.setMinimumHeight(30)
-            value_label.setFixedWidth(80)  # 固定宽度
-            top_layout.addWidget(value_label, stretch=0)
-
-            item_layout.addLayout(top_layout)
-
-            # 说明文字（如果有）
-            if description:
-                desc_label = QLabel(description)
-                desc_label.setProperty("class", "setting-description")
-                desc_label.setWordWrap(True)
-                desc_label.setMinimumHeight(25)
-                item_layout.addWidget(desc_label)
-                item_layout.setSpacing(2)
-
-            # 滑块 - 设置尺寸策略
-            slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            slider.setMinimumHeight(35)
-            item_layout.addWidget(slider)
-
-            item_widget.setLayout(item_layout)
-            return item_widget
-
-        def create_group_title(title):
-            """创建分组标题"""
-            title_label = QLabel(title)
-            title_label.setProperty("class", "group-title")
-            title_label.setMinimumHeight(50)
-            return title_label
-
-            # 创建控件
-            # 大小基数滑块
+        self.settings_tab.setStyleSheet(settings_set_style)
 
         self.size_ratio_base_label = QLabel(f"{config.size_ratio_base:.1f}")
         self.size_ratio_base_slider = QSlider(Qt.Horizontal, self)
@@ -422,11 +144,27 @@ class SettingsDialog(QDialog):
         self.wait_slider.setValue(int(config.bigger_wait_time / 60 / 1000))
         self.wait_slider.valueChanged.connect(self._on_wait_changed)
 
-
         # 托盘消息开关
         self.tray_message_check = QCheckBox(self)
         self.tray_message_check.setChecked(config.tray_msg_enabled)
-        self.tray_message_check.stateChanged.connect(self._on_tray_message_changed)
+        self.tray_message_check.stateChanged.connect(self._on_tray_msg_enabled_changed)
+
+        # 托盘消息模式-托盘
+        self.tray_message_mode_tray_check = QCheckBox(self)
+        self.tray_message_mode_tray_check.setChecked(config.tray_msg_mode_tray)
+        self.tray_message_mode_tray_check.stateChanged.connect(self._on_tray_msg_mode_tray_changed)
+
+        # 托盘颜色-白色
+        self.tray_message_color_white_check = QCheckBox(self)
+        self.tray_message_color_white_check.setChecked(config.tray_msg_color_white)
+        self.tray_message_color_white_check.stateChanged.connect(self._on_tray_msg_color_white_changed)
+
+        # 托盘边距
+        self.tray_message_margin_label = QLabel(f"{config.tray_msg_margin}")
+        self.tray_message_margin_slider = QSlider(Qt.Horizontal, self)
+        self.tray_message_margin_slider.setRange(1, 200)
+        self.tray_message_margin_slider.setValue(int(config.tray_msg_margin))
+        self.tray_message_margin_slider.valueChanged.connect(self._on_tray_msg_margin_changed)
 
         # 创建布局
         layout.addWidget(create_group_title("基本功能"))
@@ -434,7 +172,6 @@ class SettingsDialog(QDialog):
                                             "调整窗口的基准大小比例（默认1.5）"))
         layout.addWidget(create_setting_item("屏幕循环连接", self.screen_connect_check,
                                              "左边消失，右边出现；右边消失，左边出现..."))
-
         layout.addWidget(create_setting_item("点击穿透", self.click_through_check,
                                              "鼠标就点不到我了，除非，仅按下左Ctrl键"))
 
@@ -443,36 +180,59 @@ class SettingsDialog(QDialog):
                                              "鼠标左键可以拖动,移来移去..."))
         layout.addWidget(create_setting_item("重力抛掷", self.throw_follow_check,
                                              "拖动结束时，会被丢出去，自由落体（关闭后，将不会上下移动，也不会左右跑动）"))
-        layout.addWidget(create_setting_item("重力抛掷-反弹模式", self.throw_bounce_check,
-                                             "重力抛掷开启的情况下，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）"))
-        layout.addWidget(create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
-                                            self.throw_follow_rebound_ratio_label,
-                                            "反弹因数越大，损失的能量越小（默认0.8）", False))
+        layout.addWidget(create_item_container(check_widget=self.throw_follow_check, widgets=[
+            create_setting_item("重力抛掷-反弹模式", self.throw_bounce_check,
+                                "重力抛掷开启时，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）"),
+            create_item_container(check_widget=self.throw_bounce_check, widgets=[
+                create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
+                                   self.throw_follow_rebound_ratio_label,
+                                   "反弹因数越大，损失的能量越小（默认0.8）", False)
+            ])
+        ]))
 
         layout.addWidget(create_group_title("鼠标跟随"))
         layout.addWidget(create_setting_item("鼠标跟随", self.mouse_follow_check,
                                              "鼠标移动时，会跟随移动到鼠标右下角（按住左Ctrl键时，会停止跟随）"))
-        layout.addWidget(create_slider_item("跟随速度", self.mouse_follow_speed_slider,
-                                            self.mouse_follow_speed_label,
-                                            "值越大，跟随鼠标越快（默认5.0）", False))
+
+        layout.addWidget(create_item_container(check_widget=self.mouse_follow_check, widgets=[
+            create_slider_item("跟随速度", self.mouse_follow_speed_slider,
+                               self.mouse_follow_speed_label,
+                               "值越大，跟随鼠标越快（默认5.0）", False)
+        ]))
 
         layout.addWidget(create_group_title("休息提醒"))
         layout.addWidget(create_setting_item("休息提醒", self.bigger_check,
                                              "定时长大变大，提醒该休息..."))
-        layout.addWidget(create_slider_item("长大等待时间", self.wait_slider, self.wait_label,
-                                            "多长时间后触发变大提醒（默认45分钟）"))
-        layout.addWidget(create_slider_item("变大比例", self.bigger_max_ratio_slider,
-                                            self.bigger_max_size_ratio_label,
-                                            "变大的最大倍数（默认10.0），注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False))
+        layout.addWidget(create_item_container(check_widget=self.bigger_check, widgets=[
+            create_slider_item("长大等待时间", self.wait_slider, self.wait_label,
+                               "多长时间后触发变大提醒（默认45分钟）"),
+            create_slider_item("变大比例", self.bigger_max_ratio_slider,
+                               self.bigger_max_size_ratio_label,
+                               "变大的最大倍数（默认10.0），注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False)
+
+        ]))
 
         layout.addWidget(create_group_title("托盘消息"))
         layout.addWidget(create_setting_item("托盘消息", self.tray_message_check,
                                              "在系统托盘的左侧显示消息通知"))
 
-        layout.addStretch()
+        layout.addWidget(create_item_container(check_widget=self.tray_message_check, widgets=[
+            create_setting_item("位置-托盘", self.tray_message_mode_tray_check,
+                                "开启：系统托盘的左侧显示，关闭：在任务栏左侧显示"),
+            create_setting_item("颜色-白色", self.tray_message_color_white_check,
+                                "开启：白色，关闭：黑色"),
+            create_slider_item("边距", self.tray_message_margin_slider,
+                               self.tray_message_margin_label,
+                               "托盘消息与任务栏的边距（默认10）", False)
+        ]))
 
-    def _init_info_tab(self):
+        layout.addStretch()
+        return self.settings_tab
+
+    def createInfoTab(self):
         """初始化纯信息监控页"""
+        self.info_tab = QWidget()
+
         layout = QVBoxLayout()
         # 添加坐标系说明
         coordinate_info = QLabel("坐标说明：@=全局坐标，无@=窗口相对坐标", self)
@@ -526,15 +286,16 @@ class SettingsDialog(QDialog):
 
         layout.addStretch()  # 添加弹簧使控件靠上
         self.info_tab.setLayout(layout)
+        return self.info_tab
 
     def update_info_page(self):
         """专门用于更新信息页的实时数据"""
         if not self.isVisible() or self.tab_widget.currentIndex() != 1:  # 仅当信息页激活时更新
             return
         try:
-            # 只在信息页激活时更新（可选优化）
-            if self.tab_widget.currentWidget() != self.info_tab:
-                return
+            # # 只在信息页激活时更新（可选优化）
+            # if self.tab_widget.currentWidget() != self.info_tab:
+            #     return
 
             if self.parent:
                 self.widget_rect_label.setText(
@@ -649,10 +410,26 @@ class SettingsDialog(QDialog):
         self.wait_label.setText(f"{value}分钟")
         logger.info(f"设置，用户设置变大等待时间为: {value}分钟")
 
-    def _on_tray_message_changed(self, state):
+    def _on_tray_msg_enabled_changed(self, state):
         """处理托盘消息功能切换"""
         config.tray_msg_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息功能")
+
+    def _on_tray_msg_mode_tray_changed(self, state):
+        """处理托盘消息模式-托盘切换"""
+        config.tray_msg_mode_tray = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息模式-托盘")
+
+    def _on_tray_msg_color_white_changed(self, state):
+        """处理托盘消息颜色切换"""
+        config.tray_msg_color_white = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息颜色-白色")
+
+    def _on_tray_msg_margin_changed(self, value):
+        """处理托盘消息边距切换"""
+        config.tray_msg_margin = value
+        self.tray_msg_margin_label.setText(f"{value}")
+        logger.info(f"设置，用户设置托盘消息边距为: {value}")
 
     def closeEvent(self, event):
         """关闭窗口时停止定时器"""

@@ -39,7 +39,7 @@ def create_setting_item(title, switch, description=None, status=None, has_border
     if description:
         desc_label = QLabel(description)
         desc_label.setProperty("class", "setting-description")
-        desc_label.setWordWrap(True)
+        desc_label.setWordWrap(True)  # 允许文字换行
         desc_label.setMinimumHeight(40)
         text_layout.addWidget(desc_label)
 
@@ -50,14 +50,40 @@ def create_setting_item(title, switch, description=None, status=None, has_border
         status_label.setMinimumHeight(25)
         text_layout.addWidget(status_label)
 
-    text_layout.addStretch()
+    text_layout.addStretch()  # 标题和说明文字之间的间距
 
     # 右侧开关 - 固定宽度
-    switch.setFixedWidth(80)  # 开关固定宽度
+    switch.setFixedWidth(60)  # 开关固定宽度
 
     # 添加控件到主布局
-    item_layout.addWidget(text_widget, stretch=1)  # 文字区域可扩展
     item_layout.addWidget(switch, stretch=0, alignment=Qt.AlignRight)  # 开关固定宽度
+    item_layout.addWidget(text_widget, stretch=1)  # 文字区域可扩展
+
+    item_widget.setLayout(item_layout)
+    return item_widget
+
+
+def create_settings_item(titles, switches):
+    """创建一个设置项：水平布局显示各个子设置项。共用一个描述文字"""
+    item_widget = QWidget()
+    item_widget.setProperty("class", "setting-item")
+    item_layout = QHBoxLayout()
+    item_layout.setContentsMargins(25, 20, 25, 20)
+
+    # 添加所有子设置项，水平排列
+    for title, switch in zip(titles, switches):
+        sub_item_widget = QWidget()
+        sub_item_layout = QHBoxLayout()
+        sub_item_layout.setContentsMargins(0, 0, 0, 0)
+        sub_item_widget.setLayout(sub_item_layout)
+
+        title_label = QLabel(title)
+        title_label.setProperty("class", "setting-title")
+        title_label.setWordWrap(True)
+        title_label.setMinimumHeight(30)
+        item_layout.addWidget(sub_item_widget)
+        sub_item_layout.addWidget(switch, stretch=0, alignment=Qt.AlignLeft)
+        sub_item_layout.addWidget(title_label, stretch=1, alignment=Qt.AlignLeft)
 
     item_widget.setLayout(item_layout)
     return item_widget
@@ -85,7 +111,8 @@ def create_slider_item(title, slider, value_label, description=None, has_border=
     # 数值标签 - 固定宽度
     value_label.setProperty("class", "value-label")
     value_label.setMinimumHeight(30)
-    value_label.setFixedWidth(80)  # 固定宽度
+    # value_label.setFixedWidth(80)  # 固定宽度
+    value_label.setAlignment(Qt.AlignRight)
     top_layout.addWidget(value_label, stretch=0)
 
     item_layout.addLayout(top_layout)
@@ -114,22 +141,6 @@ def create_group_title(title):
     title_label.setProperty("class", "group-title")
     title_label.setMinimumHeight(50)
     return title_label
-
-    # def create_item_container(check_widget: QCheckBox, widgets: list[QWidget]):
-    #     """创建单个设置项容器"""
-    #     tray_settings_container = QWidget()
-    #     tray_settings_layout = QVBoxLayout()
-    #     tray_settings_layout.setContentsMargins(0, 0, 0, 0)
-    #     tray_settings_container.setLayout(tray_settings_layout)
-    #     for widget in widgets:
-    #         tray_settings_layout.addWidget(widget)
-    #
-    #     def _update_tray_settings_visibility():
-    #         tray_settings_container.setVisible(check_widget.isChecked())
-    #
-    #     check_widget.toggled.connect(_update_tray_settings_visibility)
-    #     # _update_tray_settings_visibility()
-    #     return tray_settings_container
 
 
 def create_item_container(check_widget: QCheckBox, widgets: list[QWidget]):

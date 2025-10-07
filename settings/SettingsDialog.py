@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt, QTimer
 
 from configs import config
 from settings.TabWidget import TabWidget
-from settings.create_setting_widgets import create_item_container, create_slider_item, create_group_title, create_setting_item
+from settings.create_setting_widgets import create_item_container, create_slider_item, create_group_title, create_setting_item, create_settings_item
 from settings.settings_styles import settings_set_style, settings_tab_style
 from utils.log_util import logger
 from utils.pos_util import point_to_tuple
@@ -39,7 +39,7 @@ class SettingsDialog(QDialog):
 
     def _init_ui(self):
         """初始化UI界面"""
-        self.setWindowTitle("设置页 ")
+        self.setWindowTitle("小小芝麻酥 - 设置")
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         self.setFixedSize(1200, 1200)
         main_layout = QVBoxLayout()
@@ -47,6 +47,7 @@ class SettingsDialog(QDialog):
         self.tab_widget = TabWidget()
         self.tab_widget.addTab("设置", self.createSettingsTab())
         self.tab_widget.addTab("监控", self.createInfoTab())
+        self.tab_widget.addTab("关于", self.createAboutTab())
 
         main_layout.addWidget(self.tab_widget)
 
@@ -102,14 +103,29 @@ class SettingsDialog(QDialog):
         self.throw_follow_check.stateChanged.connect(self._on_throw_follow_changed)
 
         # 反弹抛掷功能开关
-        self.throw_bounce_check = QCheckBox(self)
-        self.throw_bounce_check.setChecked(config.throw_follow_rebound_enabled)
-        self.throw_bounce_check.stateChanged.connect(self._on_throw_bounce_changed)
+        self.throw_rebounce_check = QCheckBox(self)
+        self.throw_rebounce_check.setChecked(config.throw_follow_rebound_enabled)
+        self.throw_rebounce_check.stateChanged.connect(self._on_throw_rebounce_changed)
+
+        # 反弹 -上 开关
+        self.throw_rebounce_up_check = QCheckBox(self)
+        self.throw_rebounce_up_check.setChecked(config.throw_follow_rebound_up_enabled)
+        self.throw_rebounce_up_check.stateChanged.connect(self._on_throw_rebounce_up_changed)
+
+        # 反弹 -下 开关
+        self.throw_rebounce_down_check = QCheckBox(self)
+        self.throw_rebounce_down_check.setChecked(config.throw_follow_rebound_down_enabled)
+        self.throw_rebounce_down_check.stateChanged.connect(self._on_throw_rebounce_down_changed)
+
+        # 反弹 -左右 开关
+        self.throw_rebounce_left_right_check = QCheckBox(self)
+        self.throw_rebounce_left_right_check.setChecked(config.throw_follow_rebound_left_right_enabled)
+        self.throw_rebounce_left_right_check.stateChanged.connect(self._on_throw_rebounce_left_right_changed)
 
         # 反弹损失因数滑块
         self.throw_follow_rebound_ratio_label = QLabel(f"{config.throw_follow_rebound_ratio:.2f}")
         self.throw_follow_rebound_ratio_slider = QSlider(Qt.Horizontal, self)
-        self.throw_follow_rebound_ratio_slider.setRange(1, 100)
+        self.throw_follow_rebound_ratio_slider.setRange(1, 150)
         self.throw_follow_rebound_ratio_slider.setValue(int(config.throw_follow_rebound_ratio * 100))
         self.throw_follow_rebound_ratio_slider.valueChanged.connect(self._on_throw_follow_rebound_ratio_changed)
 
@@ -138,61 +154,74 @@ class SettingsDialog(QDialog):
         self.bigger_max_ratio_slider.valueChanged.connect(self._on_bigger_max_size_ratio_changed)
 
         # 等待时间滑块
-        self.wait_label = QLabel(f"{config.bigger_wait_time / 60 / 1000}分钟")
+        self.wait_label = QLabel(f"{int(config.bigger_wait_time / 60 / 1000)}分钟")
         self.wait_slider = QSlider(Qt.Horizontal, self)
         self.wait_slider.setRange(1, 240)
         self.wait_slider.setValue(int(config.bigger_wait_time / 60 / 1000))
         self.wait_slider.valueChanged.connect(self._on_wait_changed)
 
         # 托盘消息开关
-        self.tray_message_check = QCheckBox(self)
-        self.tray_message_check.setChecked(config.tray_msg_enabled)
-        self.tray_message_check.stateChanged.connect(self._on_tray_msg_enabled_changed)
+        self.tray_msg_check = QCheckBox(self)
+        self.tray_msg_check.setChecked(config.tray_msg_enabled)
+        self.tray_msg_check.stateChanged.connect(self._on_tray_msg_enabled_changed)
 
-        # 托盘消息模式-托盘
-        self.tray_message_mode_tray_check = QCheckBox(self)
-        self.tray_message_mode_tray_check.setChecked(config.tray_msg_mode_tray)
-        self.tray_message_mode_tray_check.stateChanged.connect(self._on_tray_msg_mode_tray_changed)
+        # 托盘消息-键盘信息
+        self.tray_key_info_check = QCheckBox(self)
+        self.tray_key_info_check.setChecked(config.tray_key_info_enabled)
+        self.tray_key_info_check.stateChanged.connect(self._on_tray_key_info_changed)
+
+        # 托盘消息-位置-托盘
+        self.tray_msg_position_tray_check = QCheckBox(self)
+        self.tray_msg_position_tray_check.setChecked(config.tray_msg_position_tray)
+        self.tray_msg_position_tray_check.stateChanged.connect(self._on_tray_msg_position_tray_changed)
 
         # 托盘颜色-白色
-        self.tray_message_color_white_check = QCheckBox(self)
-        self.tray_message_color_white_check.setChecked(config.tray_msg_color_white)
-        self.tray_message_color_white_check.stateChanged.connect(self._on_tray_msg_color_white_changed)
+        self.tray_msg_color_white_check = QCheckBox(self)
+        self.tray_msg_color_white_check.setChecked(config.tray_msg_color_white)
+        self.tray_msg_color_white_check.stateChanged.connect(self._on_tray_msg_color_white_changed)
 
         # 托盘边距
-        self.tray_message_margin_label = QLabel(f"{config.tray_msg_margin}")
-        self.tray_message_margin_slider = QSlider(Qt.Horizontal, self)
-        self.tray_message_margin_slider.setRange(1, 200)
-        self.tray_message_margin_slider.setValue(int(config.tray_msg_margin))
-        self.tray_message_margin_slider.valueChanged.connect(self._on_tray_msg_margin_changed)
+        self.tray_msg_margin_label = QLabel(f"{config.tray_msg_margin}")
+        self.tray_msg_margin_slider = QSlider(Qt.Horizontal, self)
+        self.tray_msg_margin_slider.setRange(0, 300)
+        self.tray_msg_margin_slider.setValue(int(config.tray_msg_margin/10))
+        self.tray_msg_margin_slider.valueChanged.connect(self._on_tray_msg_margin_changed)
+
+        # 仅记录错误日志开关
+        self.logger_only_error_check = QCheckBox(self)
+        self.logger_only_error_check.setChecked(config.logger_only_error)
+        self.logger_only_error_check.stateChanged.connect(self._on_logger_only_error_changed)
 
         # 创建布局
         layout.addWidget(create_group_title("基本功能"))
         layout.addWidget(create_slider_item("大小基数", self.size_ratio_base_slider, self.size_ratio_base_label,
-                                            "调整窗口的基准大小比例（默认1.5）"))
+                                            "调整大小基数比例（默认1.5）"))
         layout.addWidget(create_setting_item("屏幕循环连接", self.screen_connect_check,
-                                             "左边消失，右边出现；右边消失，左边出现..."))
+                                             "传送门：左边消失，右边出现；右边消失，左边出现......"))
         layout.addWidget(create_setting_item("点击穿透", self.click_through_check,
                                              "鼠标就点不到我了，除非，仅按下左Ctrl键"))
 
         layout.addWidget(create_group_title("拖动抛掷"))
         layout.addWidget(create_setting_item("单击拖动", self.drag_follow_check,
-                                             "鼠标左键可以拖动,移来移去..."))
+                                             "鼠标左键长按可以拖动,移来移去....."))
         layout.addWidget(create_setting_item("重力抛掷", self.throw_follow_check,
-                                             "拖动结束时，会被丢出去，自由落体（关闭后，将不会上下移动，也不会左右跑动）"))
-        layout.addWidget(create_item_container(check_widget=self.throw_follow_check, widgets=[
-            create_setting_item("重力抛掷-反弹模式", self.throw_bounce_check,
-                                "重力抛掷开启时，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）"),
-            create_item_container(check_widget=self.throw_bounce_check, widgets=[
-                create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
-                                   self.throw_follow_rebound_ratio_label,
-                                   "反弹因数越大，损失的能量越小（默认0.8）", False)
-            ])
+                                             "拖动结束时，会被丢出去（关闭后，将不会上下移动，也不会左右跑动）\n注意：要是走丢了，也就不能传送到地面了..."))
+
+        layout.addWidget(create_setting_item("重力抛掷-反弹模式", self.throw_rebounce_check,
+                                             "重力抛掷开启时，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）\n"
+                                             "多屏幕下，即使关闭左右反弹，但目的地不存在时，还是会反弹的哦"))
+        layout.addWidget(create_item_container(check_widget=self.throw_rebounce_check, widgets=[
+            create_settings_item(["上反弹", "下反弹", "左右反弹"],
+                                 [self.throw_rebounce_up_check, self.throw_rebounce_down_check, self.throw_rebounce_left_right_check]),
+            create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
+                               self.throw_follow_rebound_ratio_label,
+                               "反弹因数越大，损失的能量越小（默认0.80）\n"
+                               "如果大于1.0，那么每次反弹就会加速！禁止超速！", False)
         ]))
 
         layout.addWidget(create_group_title("鼠标跟随"))
         layout.addWidget(create_setting_item("鼠标跟随", self.mouse_follow_check,
-                                             "鼠标移动时，会跟随移动到鼠标右下角（按住左Ctrl键时，会停止跟随）"))
+                                             "非拖动和抛掷时，跟随移动到鼠标右下角（按住左Ctrl键时，会停止跟随）"))
 
         layout.addWidget(create_item_container(check_widget=self.mouse_follow_check, widgets=[
             create_slider_item("跟随速度", self.mouse_follow_speed_slider,
@@ -204,28 +233,31 @@ class SettingsDialog(QDialog):
         layout.addWidget(create_setting_item("休息提醒", self.bigger_check,
                                              "定时长大变大，提醒该休息..."))
         layout.addWidget(create_item_container(check_widget=self.bigger_check, widgets=[
-            create_slider_item("长大等待时间", self.wait_slider, self.wait_label,
+            create_slider_item("长大时间", self.wait_slider, self.wait_label,
                                "多长时间后触发变大提醒（默认45分钟）"),
             create_slider_item("变大比例", self.bigger_max_ratio_slider,
                                self.bigger_max_size_ratio_label,
-                               "变大的最大倍数（默认10.0），注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False)
-
+                               "变大的最大倍数（默认10.0）\n注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False)
         ]))
 
         layout.addWidget(create_group_title("托盘消息"))
-        layout.addWidget(create_setting_item("托盘消息", self.tray_message_check,
+        layout.addWidget(create_setting_item("托盘消息", self.tray_msg_check,
                                              "在系统托盘的左侧显示消息通知"))
 
-        layout.addWidget(create_item_container(check_widget=self.tray_message_check, widgets=[
-            create_setting_item("位置-托盘", self.tray_message_mode_tray_check,
+        layout.addWidget(create_item_container(check_widget=self.tray_msg_check, widgets=[
+            create_setting_item("显示按键信息", self.tray_key_info_check,
+                                "打字速度，今日打字总数（关闭后，将不会更新总数）"),
+            create_setting_item("位置-托盘", self.tray_msg_position_tray_check,
                                 "开启：系统托盘的左侧显示，关闭：在任务栏左侧显示"),
-            create_setting_item("颜色-白色", self.tray_message_color_white_check,
+            create_setting_item("颜色-白色", self.tray_msg_color_white_check,
                                 "开启：白色，关闭：黑色"),
-            create_slider_item("边距", self.tray_message_margin_slider,
-                               self.tray_message_margin_label,
-                               "托盘消息与任务栏的边距（默认10）", False)
+            create_slider_item("边距", self.tray_msg_margin_slider,
+                               self.tray_msg_margin_label,
+                               "托盘消息与任务栏的边距（默认0）", False)
         ]))
-
+        layout.addWidget(create_group_title("其他"))
+        layout.addWidget(create_setting_item("仅记录错误日志", self.logger_only_error_check,
+                                             "仅记录错误日志，而不是所有日志"))
         layout.addStretch()
         return self.settings_tab
 
@@ -287,6 +319,22 @@ class SettingsDialog(QDialog):
         layout.addStretch()  # 添加弹簧使控件靠上
         self.info_tab.setLayout(layout)
         return self.info_tab
+
+    def createAboutTab(self):
+        """初始化关于页"""
+        self.about_tab = QWidget()
+        layout = QVBoxLayout()
+
+        text = """
+        关于本项目
+        版本: 25100720
+        作者: cx
+        感谢，部分素材图片来源: 芝麻球促销（作者，半江离）
+        感谢，部分桌宠模式项目: Shimeji（作者，Kilkakon）"""
+        layout.addWidget(QLabel(text, self))
+        layout.addStretch()
+        self.about_tab.setLayout(layout)
+        return self.about_tab
 
     def update_info_page(self):
         """专门用于更新信息页的实时数据"""
@@ -358,10 +406,25 @@ class SettingsDialog(QDialog):
         config.throw_follow_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'} 重力抛掷 功能")
 
-    def _on_throw_bounce_changed(self, state):
+    def _on_throw_rebounce_changed(self, state):
         """处理反弹抛掷功能切换"""
         config.throw_follow_rebound_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'} 抛掷反弹 功能")
+
+    def _on_throw_rebounce_up_changed(self, state):
+        """处理反弹-上 功能切换"""
+        config.throw_follow_rebound_up_enabled = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'} 反弹-上 功能")
+
+    def _on_throw_rebounce_down_changed(self, state):
+        """处理反弹-下 功能切换"""
+        config.throw_follow_rebound_down_enabled = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'} 反弹-下 功能")
+
+    def _on_throw_rebounce_left_right_changed(self, state):
+        """处理反弹-左右 功能切换"""
+        config.throw_follow_rebound_left_right_enabled = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'} 反弹-左右 功能")
 
     def _on_throw_follow_rebound_ratio_changed(self, value):
         """处理反弹比例设置变化"""
@@ -415,9 +478,14 @@ class SettingsDialog(QDialog):
         config.tray_msg_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息功能")
 
-    def _on_tray_msg_mode_tray_changed(self, state):
-        """处理托盘消息模式-托盘切换"""
-        config.tray_msg_mode_tray = bool(state)
+    def _on_tray_key_info_changed(self, state):
+        """处理托盘消息-键盘信息切换"""
+        config.tray_key_info_enabled = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息-键盘信息")
+
+    def _on_tray_msg_position_tray_changed(self, state):
+        """处理托盘消息位置-托盘切换"""
+        config.tray_msg_position_tray = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'}托盘消息模式-托盘")
 
     def _on_tray_msg_color_white_changed(self, state):
@@ -427,9 +495,15 @@ class SettingsDialog(QDialog):
 
     def _on_tray_msg_margin_changed(self, value):
         """处理托盘消息边距切换"""
-        config.tray_msg_margin = value
-        self.tray_msg_margin_label.setText(f"{value}")
-        logger.info(f"设置，用户设置托盘消息边距为: {value}")
+        config.tray_msg_margin = value * 10
+        self.tray_msg_margin_label.setText(f"{value * 10}")
+        logger.info(f"设置，用户设置托盘消息边距为: {value * 10}")
+
+    # 仅记录错误日志开关
+    def _on_logger_only_error_changed(self, state):
+        """处理仅记录错误日志开关切换"""
+        config.logger_only_error = bool(state)
+        logger.info(f"设置，用户{'开启' if state else '关闭'}仅记录错误日志")
 
     def closeEvent(self, event):
         """关闭窗口时停止定时器"""

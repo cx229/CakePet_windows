@@ -12,9 +12,9 @@ import win32con
 from PyQt5.QtWidgets import QApplication, QLabel
 from PyQt5.QtCore import Qt, QTimer, QSize
 
-from resmeta.tray_msg_meta import TrayMsgMeta
+from resmeta.tray_msg_meta import TrayMsgMeta, get_standby_tray_msg
 from utils.log_util import logger
-from resmeta.tray_msg_meta import TragMsgs, TrayMsgMeta, tray_msgs_cls_standard
+from resmeta.tray_msg_meta import TragMsgs, TrayMsgMeta, tray_msgs_cls_standby
 
 """
 托盘消息控制器:
@@ -35,16 +35,18 @@ class TrayMsgController(ModuleController):
 
         self.update_pos_timer = QTimer(self.widget)  # 更新位置定时器，用于定时更新标签位置
         self.update_pos_interval = 250
-        self.update_pos_timer.timeout.connect(self.update_position)
+        self.update_pos_timer.timeout.connect(self._update_position)
 
         self.change_text_timer = QTimer(self.widget)  # 改变文本定时器，用于定时改变标签文本
         self.change_text_interval_fun = lambda: random.randint(1000, 3000)
         self.change_text_timer.timeout.connect(self.change_text_discontinuous)
 
         config.tray_msg_enabled_changed.connect(self._on_tray_msg_enabled_changed)  # 监听托盘消息功能切换
-        config.tray_msg_mode_tray_changed.connect(self._on_tray_msg_mode_tray_changed)  # 监听托盘消息显示模式切换
-        config.tray_msg_color_white_changed.connect(self._on_tray_msg_color_white_changed)  # 监听托盘消息颜色切换
-        config.tray_msg_margin_changed.connect(self._on_tray_msg_margin_changed)  # 监听托盘消息边距切换
+        config.tray_msg_position_tray_changed.connect(self._on_tray_msg_position_tray_changed)  # 监听托盘消息显示位置切换
+        config.tray_msg_color_white_changed.connect(self._on_tray_msg_style_changed)  # 监听托盘消息颜色切换
+        config.tray_msg_margin_changed.connect(self._on_tray_msg_style_changed)  # 监听托盘消息边距切换
+
+        self.default_tray_msg = TragMsgs.Default.DEFAULT.value
 
         if config.tray_msg_enabled:
             self.start()
@@ -59,7 +61,14 @@ class TrayMsgController(ModuleController):
         self.change_text_timer.stop()
         self.text_label.hide()
 
-    def get_style(self,color= "white",margin_left= "0px",margin_right= "0px"):
+    def get_style(self):
+        if config.tray_msg_color_white:
+            color = "white"
+        else:
+            color = "black"
+        margin_left = f"{config.tray_msg_margin}px"
+        margin_right = f"{config.tray_msg_margin}px"
+
         """获取托盘消息样式"""
         return f"""
                     QLabel {{
@@ -67,10 +76,10 @@ class TrayMsgController(ModuleController):
                         padding: 2px 8px;
                         font-family: "Microsoft YaHei";
                         color: {color};
-                        margin-left: {margin_left};
-                        margin-right: {margin_right};
+             
                     }}
                 """
+
     def _on_tray_msg_enabled_changed(self, sender, value):
         """处理托盘消息功能切换"""
         if value:
@@ -78,44 +87,13 @@ class TrayMsgController(ModuleController):
         else:
             self.stop()
 
-    def _on_tray_msg_mode_tray_changed(self, sender, value):
-        """处理托盘消息显示模式切换"""
-        self.update_position()
+    def _on_tray_msg_position_tray_changed(self, sender, value):
+        """处理托盘消息显示位置切换"""
+        self._update_position()
 
-    def _on_tray_msg_color_white_changed(self, sender, value):
-        """处理托盘消息颜色切换"""
-        if value:
-            color = "white"
-        else:
-            color = "black"
-        # self.text_label.setStyleSheet(f"QLabel {{ color: {color}; }}")
-        # self.text_label.setProperty("color", color)
-        # self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
-        # self.text_label.style().polish(self.text_label)
-        # current_style = self.text_label.styleSheet()
-        style= self.get_style(color=color)
-
-        # # 移除旧的 color 设置（如果有）
-        # import re
-        # current_style = re.sub(r"color:\s*[^;]+;", "", current_style)
-        #
-        # # 添加新的 color
-        # new_style = f"QLabel {{ {current_style} color: {color}; }}"
-        # print(new_style)
-        self.text_label.setStyleSheet(style)
-        self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
-        self.text_label.style().polish(self.text_label)
-
-
-    def _on_tray_msg_margin_changed(self, sender, value):
-        """处理托盘消息外边距切换（仅修改左右边距）"""
-        # self.text_label.setProperty("margin-left", f"{value}px")
-        # self.text_label.setProperty("margin-right", f"{value}px")
-        # self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
-        # self.text_label.style().polish(self.text_label)
-
-        # self.text_label.setStyleSheet(f"QLabel {{ padding-left: {value}px; padding-right: {value}px; }}")
-        style = self.get_style(margin_left=f"{value}px", margin_right=f"{value}px")
+    def _on_tray_msg_style_changed(self, sender, value):
+        """处理托盘消息 的颜色info切换"""
+        style = self.get_style()
         self.text_label.setStyleSheet(style)
         self.text_label.style().unpolish(self.text_label)  # 强制刷新样式
         self.text_label.style().polish(self.text_label)
@@ -128,7 +106,6 @@ class TrayMsgController(ModuleController):
         label.setStyleSheet(self.get_style())
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setText("芝麻酥")
-
         return label
 
     def get_taskbar_info(self):
@@ -148,13 +125,13 @@ class TrayMsgController(ModuleController):
 
     def calculate_position(self, taskbar_rect, tray_rect):
         """计算窗口应该放置的位置"""
-        if config.tray_msg_mode_tray:
-            x = tray_rect[0] - self.text_label.width() - 5  # 左侧预留5像素
+        if config.tray_msg_position_tray:
+            x = tray_rect[0] - self.text_label.width() - 5 -config.tray_msg_margin  # 左侧预留5像素
             self.text_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             taskbar_height = taskbar_rect[3] - taskbar_rect[1]  # 任务栏高度
             y = taskbar_rect[1] + (taskbar_height - self.text_label.height()) // 2  # 垂直居中
-        else: # 非托盘模式,在任务栏左侧显示
-            x = taskbar_rect[0] + 5  # 左侧预留5像素
+        else:  # 非托盘模式,在任务栏左侧显示
+            x = taskbar_rect[0] + 5 +config.tray_msg_margin # 左侧预留5像素
             self.text_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             taskbar_height = taskbar_rect[3] - taskbar_rect[1]  # 任务栏高度
             y = taskbar_rect[1] + (taskbar_height - self.text_label.height()) // 2  # 垂直居中
@@ -164,52 +141,62 @@ class TrayMsgController(ModuleController):
     def get_target_position(self):
         """获取托盘消息窗口的目标位置"""
         taskbar_hwnd, taskbar_rect, tray_rect = self.get_taskbar_info()
-        # print(f"get_target_position, taskbar_hwnd: {taskbar_hwnd}, taskbar_rect: {taskbar_rect}, tray_rect: {tray_rect}")
 
         if taskbar_hwnd and tray_rect:
             return self.calculate_position(taskbar_rect, tray_rect)
         return None
 
-    def update_position(self):
+    def _update_position(self):
         """更新托盘消息窗口的位置"""
         target_pos = self.get_target_position()
         if target_pos:
             combined_pos = QPoint(*target_pos) - self.widget.geometry().topLeft()  # 计算标签的位置, 托盘消息窗口的位置 = 目标位置 - 托盘消息窗口的左上角位置
             self.text_label.move(combined_pos)
-            # self.widget.move(*target_pos)
 
-    def change_text_discontinuous(self, force: bool = False):
+    def change_text_discontinuous(self):
         """
         间断性的改变文本，期间会显示默认文本
-        一般用于：1.定时切换，2.消息的退出
         """
-        if self.trag_msg.key == TragMsgs.Default.DEFAULT.value.key:
-            self.change_text(force=force)
+        if self.trag_msg.key != self.default_tray_msg.key:
+            self.change_text(tray_msg=self.default_tray_msg, force=True)  # 时间到了，显示默认消息
         else:
-            self.change_text(tray_msg=TragMsgs.Default.DEFAULT.value, force=force)
+            tray_msg = get_standby_tray_msg()  # 从待机消息列表中随机选择一个
+            self.change_text(tray_msg=tray_msg)
 
-    def change_text(self, tray_msg: TrayMsgMeta = None,
-                    tray_msgs: list[TrayMsgMeta] = None,
-                    tray_msgs_cls: list[TrayMsgMeta] = None,
-                    duration: int = None, force: bool = False):
+    def close_text(self, trag_msg_key: str):
+        """关闭指定的托盘消息"""
+        if trag_msg_key == self.trag_msg.key and self.trag_msg.key != self.default_tray_msg.key:
+            self.change_text(tray_msg=self.default_tray_msg, force=True)
+
+    def change_text(self, tray_msg: TrayMsgMeta,
+                    force: bool = False):
         """改变托盘消息窗口的文本"""
-        if not tray_msg:  # 如果没有指定消息，从列表中随机选择一个
-            if not tray_msgs:  # 如果没有指定消息列表，从类中获取
-                if not tray_msgs_cls:  # 如果没有指定消息类列表，使用标准类
-                    tray_msgs_cls = tray_msgs_cls_standard
-                tray_msgs = [i.value for i in tray_msgs_cls]
-            tray_msg = random.choice(tray_msgs)
-
-        if force or tray_msg.priority >= self.trag_msg.priority:  # 强制改变或优先级更高或相等
-            self.trag_msg = tray_msg
-            self.text_label.setText(self.trag_msg.text)
-            if duration is None:  # 没有指定持续时间时，使用消息的持续时间
-                duration = self.trag_msg.duration
-            if duration == 0:  # 持续时间为0时，停止定时器
-                self.change_text_timer.stop()
+        if (force  # 强制改变
+                or self.trag_msg.key == self.default_tray_msg.key  # 是默认消息
+                or tray_msg.priority >= self.trag_msg.priority):  # 优先级更高或相等
+            trag_msg = tray_msg
+            self.text_label.setText(trag_msg.text)
+            if tray_msg.key == self.trag_msg.key:  # 如果是当前消息类，则不改变单次显示时间
+                logger.info(f"托盘消息，更新显示，继续时间, text: {trag_msg.text}")
             else:
-                self.change_text_timer.start(duration)
-            logger.info(f"托盘消息, text: {self.trag_msg.text}, duration: {duration}")
+                duration = trag_msg.duration
+                if duration == 0:  # 持续时间为0时，停止定时器
+                    self.change_text_timer.stop()
+                else:
+                    self.change_text_timer.start(duration)
+                logger.info(f"托盘消息，更新显示和时间, text: {trag_msg.text}, duration: {trag_msg.duration}")
+            self.trag_msg = trag_msg
+
+    def set_default_tray_msg(self, tray_msg: TrayMsgMeta = None):
+        """设置默认托盘消息"""
+        if not tray_msg:  # 如果没有指定消息，使用默认消息
+            tray_msg = TragMsgs.Default.DEFAULT.value
+        if tray_msg == self.default_tray_msg:  # 如果指定的消息就是默认消息，直接返回
+            return
+        if self.trag_msg.key == self.default_tray_msg.key:  # 如果当前消息是默认消息，切换到指定消息
+            self.change_text(tray_msg=tray_msg, force=True)
+        self.default_tray_msg = tray_msg  # 更新默认消息
+        logger.info(f"设置默认托盘消息, text: {self.default_tray_msg.text}")
 
     @property
     def rect(self):

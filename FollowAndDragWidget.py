@@ -8,12 +8,12 @@ from PyQt5.QtGui import QPixmap, QTransform, QCursor
 from module_controllers.ClickThroughController import ClickThroughController
 from module_controllers.TrayMsgController import TrayMsgController
 from monitors.KeyMonitor import KeyMonitor
-from monitors.ScreenMonitor import ScreenMonitor, adjust_offset_screen, get_cur_screen_work_bottom
+from monitors.ScreenMonitor import ScreenMonitor
 from image_modes.ModeManager import ModeManager
 from module_controllers.MouseFollowController import MouseFollowController
 from resmeta.image_meta import ImageMeta
 from settings import create_tray
-from utils.log_util import logger
+from utils.log_util import logger, on_logger_only_error_changed
 from configs import config
 from module_controllers.SizeGrowingController import SizeGrowingController
 
@@ -77,6 +77,7 @@ class FollowAndDragWidget(QWidget):
         self.follow_controller.start()  # 启动鼠标跟随控制器，开始跟随鼠标
         self.click_through_controller.start()  # 启动点击穿透控制器，开始设置窗口点击穿透
         # self.tray_msg_controller.start()  # 启动托盘消息控制器，开始显示消息
+        self.key_monitor.connect_tray_msg_controller(self, self.tray_msg_controller)  # 连接托盘消息控制器
 
     def get_cursor_pos(self) -> QPointF:
         """获取当前鼠标位置，相对窗口坐标"""
@@ -122,17 +123,22 @@ class FollowAndDragWidget(QWidget):
         self.image_label.resize(scaled_pixmap.size())  # 调整图片标签大小为缩放后的图片大小
 
         # print(f"offset:{offset},offset*2.526:{offset*2.526}")
-        new_offset = adjust_offset_screen(offset * cur_size_r, config.anchor_pos, self.screen_monitor)
+        origin_offset = offset * cur_size_r
+        new_offset = self.screen_monitor.adjust_offset_screen(origin_offset, config.anchor_pos) \
+            if (config.is_drag_follow or config.is_throw_follow or  not config.mouse_follow_enabled) else origin_offset
+        # print(f"new_offset4: {new_offset},origin_offset: {origin_offset}")
+
         config.anchor_pos += new_offset
+
         new_pos = config.anchor_pos - scaled_anchor
         # print(f"设置图片: {img_meta.path}, 大小比例: {self.size_ratio}, 锚点: {scaled_anchor}, 偏移量: {new_offset}, offset: {offset}")
 
         self.image_label.move(new_pos)
 
-
     def img_move_by_offset(self, offset: QPoint):
         """根据偏移量移动图片,同时更新锚点坐标"""
-        new_offset = adjust_offset_screen(offset, config.anchor_pos, self.screen_monitor)
+        new_offset = self.screen_monitor.adjust_offset_screen(offset, config.anchor_pos) \
+            if (config.is_drag_follow or config.is_throw_follow or  not config.mouse_follow_enabled) else offset
         self.image_label.move(self.image_label.pos() + new_offset)
         config.anchor_pos += new_offset
 

@@ -1,17 +1,16 @@
 import datetime
+import random
 from typing import TYPE_CHECKING
 
 from PyQt5.QtGui import QCursor, QMouseEvent
 from PyQt5.QtWidgets import QApplication
-from fontTools.ttLib.tables.otTables import splitPairPos
 
 if TYPE_CHECKING:
     from FollowAndDragWidget import FollowAndDragWidget
-from monitors.ScreenMonitor import get_cur_screen_work_bottom, get_cur_work_by_xy_f, get_cur_screen_work
 from module_controllers.ModuleController import ModuleController
 
 import image_modes
-from resmeta.tray_msg_meta import TragMsgs, TrayMsgMeta
+from resmeta.tray_msg_meta import get_throw_distance_tray_msg, get_throw_highest_tray_msg, get_throwing_tray_msg, get_dragging_tray_msg
 import math
 import traceback
 from PyQt5.QtCore import Qt, QPoint, QTimer, QPointF, QRect
@@ -80,7 +79,7 @@ class MouseFollowController(ModuleController):
             self.drag_follow_start_time = datetime.datetime.now()  # 记录跟随开始时间
             self.drag_cnt = self.drag_cnt_init  # 拖拽计数器重置
             logger.info(f"用户开始拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})")
-            self.widget.tray_msg_controller.change_text(tray_msg=TragMsgs.Meow.MIAO1.value, duration=0)
+            self.widget.tray_msg_controller.change_text(tray_msg=get_dragging_tray_msg())
 
         except Exception as e:
             logger.error(f"拖动开始异常: {traceback.format_exc()}")
@@ -93,9 +92,10 @@ class MouseFollowController(ModuleController):
             logger.info(f"用户结束拖动图片，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})， 拖动时间: {duration}")
             self.drag_cnt = 0  # 拖拽计数器归零
             if config.throw_follow_enabled:
-                self.throw_begin()  # 检查是否开始跟随,如果是,则开始跟随
+                move_offset = (self.drag_move_offset + self.drag_move_offset_last) / 2
+                self.throw_begin(move_offset)  # 检查是否开始跟随,如果是,则开始跟随
             else:
-                self.widget.tray_msg_controller.change_text_discontinuous()
+                self.widget.tray_msg_controller.close_text(get_dragging_tray_msg().key)
 
         except Exception as e:
             logger.error(f"拖动结束异常: {traceback.format_exc()}")
@@ -127,19 +127,18 @@ class MouseFollowController(ModuleController):
         except Exception as e:
             logger.error(f"拖动过程异常: {traceback.format_exc()}")
 
-    def throw_begin(self):
+    def throw_begin(self, throw_start_offset: QPoint = QPoint(0, 0)):
         # 不论是否是重新抛掷，都需要删除上一次的余数
         self._remainder_throw = QPointF(0, 0)  # 动态创建对象变量
         config.is_throw_follow = True
-        move_offset = (self.drag_move_offset + self.drag_move_offset_last) / 2
-        config.throw_follow_speed = speed_util.cal_throw_speed(move_offset)
+        config.throw_follow_speed = speed_util.cal_throw_speed(throw_start_offset)
         self.throw_start_pos = QPoint(config.anchor_pos)  # 抛掷开始位置,记录抛掷开始时的鼠标位置
         self.throw_highest_pos = QPoint(config.anchor_pos)  # 记录抛掷最高位置,初始化当前位置
         self.throw_sum_offset = QPoint()  # 抛掷总位移量
         self.throw_follow_start_time = datetime.datetime.now()
         logger.info(f"抛掷跟随开始，锚点坐标: ({config.anchor_pos.x():.2f},{config.anchor_pos.y():.2f})")
         self.widget.mode_manager.set_mode(image_modes.ThrowFollowMode.get_name())  # 切换到抛掷模式
-        self.widget.tray_msg_controller.change_text(tray_msg=TragMsgs.Meow.MIAO2.value, duration=0)
+        self.widget.tray_msg_controller.change_text(tray_msg=get_throwing_tray_msg())
 
     def throw_end(self):
         config.is_throw_follow = False
@@ -150,21 +149,25 @@ class MouseFollowController(ModuleController):
         # 反弹模式，计算并显示抛掷距离
         if config.throw_follow_rebound_enabled:
             move_distance = int(math.hypot(self.throw_sum_offset.x(), self.throw_sum_offset.y()))
-            self.widget.tray_msg_controller.change_text(tray_msg=TrayMsgMeta(key="throw_distance", text=f"弹弹弹: {move_distance:,} 像素", base_ms=5000))
+            if move_distance > 0:
+                self.widget.tray_msg_controller.change_text(tray_msg=get_throw_distance_tray_msg(move_distance))
+            else:
+                self.widget.tray_msg_controller.close_text(get_throwing_tray_msg().key)
         # 非反弹模式，计算并显示抛掷高度
         else:
             height = self.throw_start_pos.y() - self.throw_highest_pos.y()
             if height > 0:
-                self.widget.tray_msg_controller.change_text(tray_msg=TrayMsgMeta(key="throw_highest", text=f"抛高高: {height:,} 像素", base_ms=5000))
+                self.widget.tray_msg_controller.change_text(tray_msg=get_throw_highest_tray_msg(height))
             else:
-                self.widget.tray_msg_controller.change_text_discontinuous()
+                self.widget.tray_msg_controller.close_text(get_throwing_tray_msg().key)
+
         self.drag_move_offset = QPoint()  # 移动位移量
         self.drag_move_offset_last = QPoint()  # 上一次的移动位移量
 
     def throw_func(self):
         """ 抛掷动画函数 """
         anchor_pos = config.anchor_pos
-        cur_work_bottom = get_cur_screen_work_bottom(anchor_pos, self.widget.screen_monitor)
+        cur_work_bottom = self.widget.screen_monitor.get_cur_screen_work_bottom(anchor_pos)
         # print(f"anchor_pos.y():{anchor_pos.y()}, cur_work_bottom:{cur_work_bottom}")
         # 在工作区域内
         if anchor_pos.y() < cur_work_bottom:
@@ -240,17 +243,22 @@ class MouseFollowController(ModuleController):
         if active_window != self.widget:
             config.is_drag_follow = False
 
-    def fall_check_need_begin(self):
-        """ 检查是否需要开始跟随 """
-        cur_work_bottom = get_cur_screen_work_bottom(config.anchor_pos, self.widget.screen_monitor)
+    def fall_check_need_begin(self, from_screen_error=False):
+        """ 检查是否需要开始跟随,可能是来自屏幕错位导致 """
+        cur_work_bottom = self.widget.screen_monitor.get_cur_screen_work_bottom(config.anchor_pos)
         # print(f"config.anchor_pos.y():{config.anchor_pos.y()},cur_work_bottom:{cur_work_bottom},{config.anchor_pos.y() != cur_work_bottom}")
         if config.anchor_pos.y() != cur_work_bottom and config.gravity_enable:
-            self.throw_begin()
+            transform_flag = random.random() > 0.5
+            if transform_flag:
+                throw_start_offset = QPoint(2, 0)
+            else:
+                throw_start_offset = QPoint(-2, 0)
+            self.throw_begin(throw_start_offset)
 
     def adjust_bottom_check(self):
         """ 检查是否需要调整底部位置 """
         anchor_pos = config.anchor_pos
-        cur_work_bottom = get_cur_screen_work_bottom(anchor_pos, self.widget.screen_monitor)
+        cur_work_bottom = self.widget.screen_monitor.get_cur_screen_work_bottom(anchor_pos)
         if anchor_pos.y() > cur_work_bottom:  # 在任务栏下，修正位置，防止超出工作区域
             offset = QPoint(0, cur_work_bottom - config.anchor_pos.y())  # 计算偏移量，根据锚点计算
             self.widget.img_move_by_offset(offset)  # 移动图片
@@ -261,19 +269,19 @@ class MouseFollowController(ModuleController):
             if config.is_drag_follow:  # 拖动时，且拖拽计数器大于0
                 self.drag_check_need_end()  # 检查是否需要结束拖动跟随
             # 处理 抛掷跟随（因为抛掷 是 外部启动）
-            elif  config.is_throw_follow:
+            elif config.is_throw_follow:
                 if config.throw_follow_enabled:
-                    self.throw_func()    # 处理 抛掷跟随
-                else: # 抛掷功能关闭，但是正在抛掷，那么结束抛掷
+                    self.throw_func()  # 处理 抛掷跟随
+                else:  # 抛掷功能关闭，但是正在抛掷，那么结束抛掷
                     self.throw_end()
             # 处理 跟随鼠标（因为跟随鼠标 是 内部启动）
             elif config.mouse_follow_enabled:
                 self.mouse_func()  # 处理 跟随鼠标
-            elif config.is_mouse_follow: # 鼠标跟随关闭，但是正在跟随鼠标，那么结束跟随
+            elif config.is_mouse_follow:  # 鼠标跟随关闭，但是正在跟随鼠标，那么结束跟随
                 self.check_mouse_end()
             # 默认 处理 重力抛掷
             elif config.throw_follow_enabled:
-                self.fall_check_need_begin()  # 检查是否需要开始跟随
+                self.fall_check_need_begin()  # 检查是否需要开始跟随,可能是来自屏幕错位导致
 
 
         except Exception as e:

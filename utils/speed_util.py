@@ -3,7 +3,7 @@ import math
 from PyQt5.QtCore import QPointF, QPoint, QRect
 
 from configs import config
-from monitors.ScreenMonitor import ScreenMonitor, get_cur_work_by_xy_f, get_cur_screen_work
+from monitors.ScreenMonitor import ScreenMonitor
 from utils import pos_util
 
 
@@ -40,6 +40,7 @@ def cal_throw_speed(move_offset):
 
 def cal_throw_offset(_remainder_throw: QPointF):
     """计算抛掷新位置偏移量"""
+
     def cal_throw_speed_f(throw_speed_f):
         # 计算当前速度的绝对值
         throw_acceleration = config.throw_follow_acceleration * config.follow_update_interval  # 重力加速度
@@ -61,31 +62,44 @@ def cal_throw_rebound_offset(anchor_pos: QPoint, offset: QPoint, _remainder_thro
 
     now_pos: QPoint = anchor_pos
     new_pos_f: QPointF = now_pos + offset_f  # 计算新位置
-    new_work_rect: QRect = get_cur_work_by_xy_f(new_pos_f, screen_monitor)  # 获取新位置所在的工作区域
+    new_work_rect: QRect = screen_monitor.get_cur_work_by_xy_f(new_pos_f)  # 获取新位置所在的工作区域
 
     # print(f"new_pos_f: {pointf_to_tuple(new_pos_f)}, new_work_rect: {new_work_rect}")
     if not new_work_rect:  # 检查是否超过了当前屏幕的可见范围
-        cur_work_rect: QRect = get_cur_screen_work(anchor_pos, screen_monitor)  # 获取当前位置所在的工作区域
-        # print(f"超过了可见区域 cur_work_rect: {cur_work_rect}")
+        cur_work_rect: QRect = screen_monitor.get_cur_screen_work(anchor_pos)  # 获取当前位置所在的工作区域
+        new_pos_connect_f = screen_monitor.adjust_pos_connect_f(new_pos_f)
+        # 即使屏幕连接，目标位置在全局可见，但工作区不可见
+        is_connect_in_global_not_work = screen_monitor.in_global_screen_rect_f(new_pos_connect_f) and screen_monitor.get_cur_work_by_xy_f(new_pos_connect_f) is None
+
         # 左侧,碰撞一次
         if new_pos_f.x() < cur_work_rect.left():
-            new_pos_f.setX(cur_work_rect.left() + (cur_work_rect.left() - new_pos_f.x()))
-            speed = QPointF(-speed.x() * rebound_ratio, speed.y() * rebound_ratio)
-        # 右侧,碰撞一次
+            if config.throw_follow_rebound_left_right_enabled or is_connect_in_global_not_work:  # 如果开启左右反弹，或者（目标位置循环后 不在本窗口，但在其他窗口不可见区域）
+                new_pos_f.setX(cur_work_rect.left() + (cur_work_rect.left() - new_pos_f.x()))
+                speed = QPointF(-speed.x() * rebound_ratio, speed.y() * rebound_ratio)
+                # 右侧,碰撞一次
         elif new_pos_f.x() > cur_work_rect.right():
-            new_pos_f.setX(cur_work_rect.right() - (new_pos_f.x() - cur_work_rect.right()))
-            speed = QPointF(-speed.x() * rebound_ratio, speed.y() * rebound_ratio)
+            if config.throw_follow_rebound_left_right_enabled or is_connect_in_global_not_work:
+                new_pos_f.setX(cur_work_rect.right() - (new_pos_f.x() - cur_work_rect.right()))
+                speed = QPointF(-speed.x() * rebound_ratio, speed.y() * rebound_ratio)
         # 顶部,碰撞一次
         if new_pos_f.y() < cur_work_rect.top():
-            new_pos_f.setY(cur_work_rect.top() + (cur_work_rect.top() - new_pos_f.y()))
-            speed = QPointF(speed.x() * rebound_ratio, -speed.y() * rebound_ratio)
+            if config.throw_follow_rebound_up_enabled:
+                new_pos_f.setY(cur_work_rect.top() + (cur_work_rect.top() - new_pos_f.y()))
+                speed = QPointF(speed.x() * rebound_ratio, -speed.y() * rebound_ratio)
         # 底部,碰撞一次
         elif new_pos_f.y() > cur_work_rect.bottom():
-            new_pos_f.setY(cur_work_rect.bottom() - (new_pos_f.y() - cur_work_rect.bottom()))
-            speed = QPointF(speed.x() * rebound_ratio, -speed.y() * rebound_ratio)
+            if config.throw_follow_rebound_down_enabled:
+                new_pos_f.setY(cur_work_rect.bottom() - (new_pos_f.y() - cur_work_rect.bottom()))
+                speed = QPointF(speed.x() * rebound_ratio, -speed.y() * rebound_ratio)
+
         new_pos_f = pos_util.adjust_pos_to_work_f(new_pos_f, cur_work_rect)
 
+    if abs(speed.x()) > 30:  # 限速
+        speed.setX(30 if speed.x() > 0 else -30)
+    if abs(speed.y()) > 30:
+        speed.setY(30 if speed.y() > 0 else -30)
     config.throw_follow_speed = speed
+    # print(f"new_pos_f: {pos_util.pointf_to_tuple(new_pos_f)}，_speed: {pos_util.pointf_to_tuple(speed)}")
     new_offset = new_pos_f - anchor_pos  # 计算反弹偏移量
     # print(f"new_pos_f: {pointf_to_tuple(new_pos_f)}, new_offset: {pointf_to_tuple(new_offset)}，_speed: {pointf_to_tuple(speed)}")
     _remainder_throw = new_offset - QPointF(new_offset.toPoint())  # 转换回 QPointF 并取小数部分
@@ -103,9 +117,8 @@ def cal_mouse_offset(cur_pos: QPoint, tar_pos: QPoint, _remainder_mouse: QPointF
     follow_speed = config.mouse_follow_speed * config.follow_update_interval / 8
     smoothing_factor = 50
     speed_factor = 1 - math.exp(-distance_f / smoothing_factor)
-    new_offset_f =  _remainder_mouse+(tar_pos_f - cur_now_f) * (follow_speed * speed_factor / distance_f)
+    new_offset_f = _remainder_mouse + (tar_pos_f - cur_now_f) * (follow_speed * speed_factor / distance_f)
 
     _remainder_mouse = new_offset_f - QPointF(new_offset_f.toPoint())  # 转换回 QPointF 并取小数部分
     # print(f"new_pos_f: {pos_util.pointf_to_tuple(new_offset_f)}, new_offset: {pos_util.point_to_tuple(new_offset_f.toPoint())}，_remainder_mouse: {pos_util.pointf_to_tuple(_remainder_mouse)}")
-    return QPoint(new_offset_f.toPoint()), _remainder_mouse # 返回新位置偏移量, 未移动的量
-
+    return QPoint(new_offset_f.toPoint()), _remainder_mouse  # 返回新位置偏移量, 未移动的量

@@ -64,34 +64,34 @@ class Images:
         S1 = ImageMeta("dev1", "img/dev1.png", size_r=10)
 
     class Sit(Enum):  # 坐
-        CLAM1 = ImageMeta("sit_clam1", "img/sit_clam-1.png",anchor_y=81)
-        CLAM2 = ImageMeta("sit_clam2", "img/sit_clam-2.png",anchor_y=81)
-        CLAM3 = ImageMeta("sit_clam3", "img/sit_clam-3.png",anchor_y=81)
-        PUFFED1 = ImageMeta("sit_puffed1", "img/sit_puffed-1.png",anchor_y=81)
-        PUFFED2 = ImageMeta("sit_puffed2", "img/sit_puffed-2.png",anchor_y=81)
-        PUFFED3 = ImageMeta("sit_puffed3", "img/sit_puffed-3.png",anchor_y=81)
-        PUFFED4 = ImageMeta("sit_puffed4", "img/sit_puffed-4.png",anchor_y=81)
+        CLAM1 = ImageMeta("sit_clam1", "img/sit_clam-1.png", anchor_y=81)
+        CLAM2 = ImageMeta("sit_clam2", "img/sit_clam-2.png", anchor_y=81)
+        CLAM3 = ImageMeta("sit_clam3", "img/sit_clam-3.png", anchor_y=81)
+        PUFFED1 = ImageMeta("sit_puffed1", "img/sit_puffed-1.png", anchor_y=81)
+        PUFFED2 = ImageMeta("sit_puffed2", "img/sit_puffed-2.png", anchor_y=81)
+        PUFFED3 = ImageMeta("sit_puffed3", "img/sit_puffed-3.png", anchor_y=81)
+        PUFFED4 = ImageMeta("sit_puffed4", "img/sit_puffed-4.png", anchor_y=81)
 
     class Walk(Enum):  # 走
-        S1 = ImageMeta("walk1", "img/walk-1.png", anchor_x=47,anchor_y=59)
-        S2 = ImageMeta("walk2", "img/walk-2.png", anchor_x=47,anchor_y=59)
-        S3 = ImageMeta("walk3", "img/walk-3.png", anchor_x=47,anchor_y=59)
-        WHITE1 = ImageMeta("walk_white1", "img/walk_white-1.png", anchor_x=47,anchor_y=59)
-        WHITE2 = ImageMeta("walk_white2", "img/walk_white-2.png", anchor_x=47,anchor_y=59)
-        WHITE3 = ImageMeta("walk_white3", "img/walk_white-3.png", anchor_x=47,anchor_y=59)
-        WHITE4 = ImageMeta("walk_white4", "img/walk_white-4.png", anchor_x=47,anchor_y=59)
-        WHITE5 = ImageMeta("walk_white5", "img/walk_white-5.png", anchor_x=47,anchor_y=59)
+        S1 = ImageMeta("walk1", "img/walk-1.png", anchor_x=47, anchor_y=59)
+        S2 = ImageMeta("walk2", "img/walk-2.png", anchor_x=47, anchor_y=59)
+        S3 = ImageMeta("walk3", "img/walk-3.png", anchor_x=47, anchor_y=59)
+        WHITE1 = ImageMeta("walk_white1", "img/walk_white-1.png", anchor_x=47, anchor_y=59)
+        WHITE2 = ImageMeta("walk_white2", "img/walk_white-2.png", anchor_x=47, anchor_y=59)
+        WHITE3 = ImageMeta("walk_white3", "img/walk_white-3.png", anchor_x=47, anchor_y=59)
+        WHITE4 = ImageMeta("walk_white4", "img/walk_white-4.png", anchor_x=47, anchor_y=59)
+        WHITE5 = ImageMeta("walk_white5", "img/walk_white-5.png", anchor_x=47, anchor_y=59)
 
     class PatHead(Enum):
-        S1 = ImageMeta("pat_head1", "img/pat_head-1.png",anchor_y=81)
-        S2 = ImageMeta("pat_head2", "img/pat_head-2.png",anchor_y=81)
-        S3 = ImageMeta("pat_head3", "img/pat_head-3.png",anchor_y=81)
-        S4 = ImageMeta("pat_head4", "img/pat_head-4.png",anchor_y=81)
-        S5 = ImageMeta("pat_head5", "img/pat_head-5.png",anchor_y=81)
+        S1 = ImageMeta("pat_head1", "img/pat_head-1.png", anchor_y=81)
+        S2 = ImageMeta("pat_head2", "img/pat_head-2.png", anchor_y=81)
+        S3 = ImageMeta("pat_head3", "img/pat_head-3.png", anchor_y=81)
+        S4 = ImageMeta("pat_head4", "img/pat_head-4.png", anchor_y=81)
+        S5 = ImageMeta("pat_head5", "img/pat_head-5.png", anchor_y=81)
 
     class ShakeHead(Enum):  # 摇头头
-        S1 = ImageMeta("shake_head1", "img/shake_head-1.png",anchor_y=81)
-        S2 = ImageMeta("shake_head2", "img/shake_head-2.png",anchor_y=81)
+        S1 = ImageMeta("shake_head1", "img/shake_head-1.png", anchor_y=81)
+        S2 = ImageMeta("shake_head2", "img/shake_head-2.png", anchor_y=81)
 
     class LiftUp(Enum):  # 提起
         S1 = ImageMeta("lift_up1", "img/lift_up-1.png", anchor_y=71)
@@ -115,20 +115,24 @@ class Images:
         S3 = ImageMeta("jump_down3", "img/jump_down-3.png")
 
     class PullFish(Enum):  # 拉鱼
-        S1 = ImageMeta("pull_fish1", "img/pull_fish-1.png",anchor_x=54,anchor_y=52)
-        S2 = ImageMeta("pull_fish2", "img/pull_fish-2.png",anchor_x=54,anchor_y=52)
-        S3 = ImageMeta("pull_fish3", "img/pull_fish-3.png",anchor_x=54,anchor_y=52)
-        S4 = ImageMeta("pull_fish4", "img/pull_fish-4.png",anchor_x=54,anchor_y=52)
-        S5 = ImageMeta("pull_fish5", "img/pull_fish-5.png",anchor_x=54,anchor_y=52)
-        S6 = ImageMeta("pull_fish6", "img/pull_fish-6.png",anchor_x=67,anchor_y=39)
+        S1 = ImageMeta("pull_fish1", "img/pull_fish-1.png", anchor_x=54, anchor_y=52)
+        S2 = ImageMeta("pull_fish2", "img/pull_fish-2.png", anchor_x=54, anchor_y=52)
+        S3 = ImageMeta("pull_fish3", "img/pull_fish-3.png", anchor_x=54, anchor_y=52)
+        S4 = ImageMeta("pull_fish4", "img/pull_fish-4.png", anchor_x=54, anchor_y=52)
+        S5 = ImageMeta("pull_fish5", "img/pull_fish-5.png", anchor_x=54, anchor_y=52)
+        S6 = ImageMeta("pull_fish6", "img/pull_fish-6.png", anchor_x=67, anchor_y=39)
 
     class Wriggle(Enum):  # 蠕动
-        S1 = ImageMeta("wriggle1", "img/wriggle-1.png",anchor_x=54,anchor_y=42)
-        S2 = ImageMeta("wriggle2", "img/wriggle-2.png",anchor_x=54,anchor_y=42)
+        S1 = ImageMeta("wriggle1", "img/wriggle-1.png", anchor_x=54, anchor_y=42)
+        S2 = ImageMeta("wriggle2", "img/wriggle-2.png", anchor_x=54, anchor_y=42)
 
     class ProbeHead(Enum):  # 探头
         S1 = ImageMeta("probe_head1", "img/probe_head-1.png", anchor_y=113)
         S2 = ImageMeta("probe_head2", "img/probe_head-2.png", anchor_y=113)
+
+    class Portal(Enum):  # 传送门
+        S1 = ImageMeta("portal1", "img/portal-1.png",anchor_y=110)
+        S2 = ImageMeta("portal2", "img/portal-2.png",anchor_y=110)
 
 
 #

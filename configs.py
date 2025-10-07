@@ -83,6 +83,7 @@ class BaseObservable(metaclass=ObservableMeta):
 
 class GlobalConfig(BaseObservable):
     """ 全局配置 """
+    logger_only_error: bool = None  # 是否仅记录错误日志
     img_hide_flag = False  # 是否隐藏图片
     screen_connect_enabled: bool = None  # 是否开启屏幕连接功能
     click_through_enabled: bool = None  # 是否开启点击穿透功能
@@ -101,6 +102,9 @@ class GlobalConfig(BaseObservable):
 
     throw_follow_enabled: bool = None
     throw_follow_rebound_enabled: bool = None  # 是否开启反弹功能
+    throw_follow_rebound_up_enabled: bool = None  # 是否开启反弹-上 功能
+    throw_follow_rebound_down_enabled: bool = None  # 是否开启反弹-下 功能
+    throw_follow_rebound_left_right_enabled: bool = None  # 是否开启反弹-左右 功能
     throw_follow_rebound_ratio: float = None  # 反弹系数
     is_throw_follow = False  # 是否正在下落
     gravity_enable: bool = True  # 是否开启重力功能
@@ -120,32 +124,43 @@ class GlobalConfig(BaseObservable):
 
     """ 托盘消息配置 """
     tray_msg_enabled: bool = None  # 是否开启托盘消息
-    tray_msg_mode_tray: bool = None  # True 表示托盘左侧显示，False 表示任务栏左侧显示
+    tray_key_info_enabled: bool = None  # 是否开启按键速度功能
+    tray_key_today_date: str = None  # 托盘消息-键盘信息-当前日期
+    tray_key_today_total: int = None  # 托盘消息-键盘信息-当前日期的总按键次数
+    tray_msg_position_tray: bool = None  # True 表示托盘左侧显示，False 表示任务栏左侧显示
     tray_msg_color_white: bool = None  # 托盘消息是否为白色
     tray_msg_margin: int = None  # 托盘消息与图标之间的间距，默认0
+
+    """ 按键速度配置 """
 
 
 config_path = "config.yaml"
 config = GlobalConfig()
 
-
 default_config = {
-    "size_ratio_base": 1.5,
-    "click_through_enabled": False,
-    "screen_connect_enabled": True,
-    "drag_follow_enabled": True,
-    "throw_follow_enabled": True,
-    "throw_follow_rebound_enabled": True,
+    "logger_only_error": True,  # 是否仅记录错误日志，默认打开，避免文件过多
+    "size_ratio_base": 1.5,  # 大小比例基数，默认1.5倍
+    "click_through_enabled": False,  # 是否开启点击穿透功能，默认关闭
+    "screen_connect_enabled": True,  # 是否开启屏幕连接功能，默认开启
+    "drag_follow_enabled": True,  # 是否开启拖动功能，默认开启
+    "throw_follow_enabled": True,  # 是否开启抛掷功能，默认开启
+    "throw_follow_rebound_enabled": True,  # 是否开启反弹功能，默认开启
+    "throw_follow_rebound_up_enabled": True,  # 是否开启反弹-上 功能, 默认开启
+    "throw_follow_rebound_down_enabled": True,  # 是否开启反弹-下 功能, 默认开启
+    "throw_follow_rebound_left_right_enabled": True,  # 是否开启反弹-左右 功能, 默认开启
     "throw_follow_rebound_ratio": 0.8,  # 反弹系数
-    "mouse_follow_enabled": False,
-    "mouse_follow_speed": 5,
-    "bigger_enabled": True,
+    "mouse_follow_enabled": False,  # 是否开启跟随鼠标功能，默认关闭
+    "mouse_follow_speed": 5,  # 每次的跟随，移动的像素点长度，跟随速度，单位:像素/s
+    "bigger_enabled": True,  # 是否开启放大功能，默认开启
     "bigger_wait_time": 45 * 60 * 1000,  # 45 minutes in milliseconds
-    "bigger_max_size_ratio": 10.0,
-    "tray_msg_enabled": True,
-    "tray_msg_mode_tray": True,
-    "tray_msg_color_white": True,
-    "tray_msg_margin": 0,
+    "bigger_max_size_ratio": 10.0, # 最大放大比例，默认10倍
+    "tray_msg_enabled": True, # 是否开启托盘消息功能，默认开启
+    "tray_key_info_enabled": True,  # 是否开启按键信息功能, 默认开启
+    "tray_key_today_date": None,  # 托盘消息-键盘信息-当前日期
+    "tray_key_today_total": 0,  # 托盘消息-键盘信息-当前日期的总按键次数
+    "tray_msg_position_tray": True, # 是否开启托盘位置是托盘，默认 True
+    "tray_msg_color_white": True,  # 托盘消息是否为白色，默认 True
+    "tray_msg_margin": 0,  # 托盘消息与图标之间的间距，默认0
 }
 
 

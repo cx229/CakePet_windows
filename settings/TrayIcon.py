@@ -22,8 +22,8 @@ class TrayIcon(QSystemTrayIcon):
 
         # 设置托盘图标
         self.setIcon(QIcon(tray_icon))
-        # 双击托盘图标显示/隐藏窗口
-        self.activated.connect(self.toggle_window_visibility)
+        # # 双击托盘图标显示/隐藏窗口
+        # self.activated.connect(self.toggle_window_visibility)
 
     def toggle_window_visibility(self, reason):
         """双击托盘图标切换窗口可见性"""

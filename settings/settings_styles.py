@@ -18,7 +18,7 @@ settings_tab_style="""
 """
 
 settings_set_style="""
-    /* 全局样式 */
+    /* 设置页样式 */
     QWidget {
         font-family: "Microsoft YaHei";
         font-size: 18px;
@@ -33,7 +33,7 @@ settings_set_style="""
 
     QScrollBar:vertical {
         background-color: #e6f0ff;
-        width: 10px;
+        width: 15px;
         border-radius: 5px;
     }
 
@@ -64,7 +64,7 @@ settings_set_style="""
 
     /* 分组标题 */
     .group-title {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
         color: #2c6bb0;
         background-color: #e6f0ff;
@@ -75,9 +75,9 @@ settings_set_style="""
 
     /* 主标题样式 */
     .setting-title {
-        font-size: 22px;
+        font-size: 24px;
         color: #333333;
-        font-weight: normal;
+        font-weight: bold;
         margin: 0px;
         padding: 0px;
         min-height: 25px;
@@ -135,7 +135,7 @@ settings_set_style="""
         left: 32px;
         width: 28px;
         height: 28px;
-        border-radius: 14px;
+        border-radius: 18px;
         background-color: white;
         margin: 2px;
     }
@@ -146,7 +146,7 @@ settings_set_style="""
         left: 2px;
         width: 28px;
         height: 28px;
-        border-radius: 14px;
+        border-radius: 18px;
         background-color: white;
         margin: 2px;
     }
@@ -175,11 +175,11 @@ settings_set_style="""
 
     /* 数值标签 */
     .value-label {
-        font-size: 18px;
+        font-size: 22px;
         color: #4a90e2;
-        min-width: 80px;
+        min-width: 200px;
         text-align: center;
-        margin: 0px;
+        margin-right: 40px;
         padding: 0px;
         font-weight: bold;
     }

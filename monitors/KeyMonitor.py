@@ -1,9 +1,16 @@
-from os import remove
+import queue
+from typing import TYPE_CHECKING, Optional
 
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QWidget
 from pynput import keyboard
 import time
 
 from configs import config
+from resmeta.tray_msg_meta import TragMsgs, get_key_speed_tray_msg
+
+if TYPE_CHECKING:
+    from module_controllers.TrayMsgController import TrayMsgController
 
 _VK_TO_NAME = {
     # 字母键 A-Z (65-90)
@@ -57,20 +64,49 @@ _VK_TO_NAME = {
 
 class KeyMonitor:
     def __init__(self):
+        self.last_key_speed = None
         self.pressed_keys: set[keyboard.Key] = set()  # 记录当前按下的键
         self.listener = None  # 监听器对象
         self.is_running = False  # 监听状态标志
+        self.tray_msg_controller: Optional['TrayMsgController'] = None  # 托盘消息控制器
+
+        self.key_speed_timer = None
+        self.total_update_config_timer = None  # 按键总次数更新定时器
+        self.key_today_total = 0  # 按键总次数
+        self.key_queue: queue.Queue = queue.Queue()  # 存入按键时间列表
+
+        config.tray_key_info_enabled_changed.connect(self._on_key_info_enabled_changed)  # 按键信息配置改变时调用
+
+    def _on_key_info_enabled_changed(self, sender, value):
+        """按键信息配置改变时调用"""
+        if value:
+            if self.key_speed_timer:
+                self.key_speed_timer.start(5000)  # 每5秒检查一次按键速度
+            if self.total_update_config_timer:
+                self.total_update_config_timer.start(1000)  # 每60秒更新一次按键总次数
+            self.last_key_speed = None  # 重置最后记录的按键速度
+            self._check_total_update_config()  # 初始化按键总次数
+
+        else:
+            if self.key_speed_timer:
+                self.key_speed_timer.stop()
+            if self.total_update_config_timer:
+                self.total_update_config_timer.stop()
+            self.key_queue: queue.Queue = queue.Queue()  # 存入按键时间列表
+            self.tray_msg_controller.set_default_tray_msg(tray_msg=TragMsgs.Default.DEFAULT.value)  # 重置默认消息
 
     def get_pressed_keys(self) -> str:
         """获取当前按下的键的字符串表示"""
         return ", ".join([_VK_TO_NAME.get(key, str(key)) for key in self.pressed_keys])
 
     def _on_press(self, key):
-
         if hasattr(key, 'vk'):
-            key_add = key.vk
+            key_add = key.vk  # 虚拟键
+            if config.tray_key_info_enabled:
+                self.key_queue.put(time.time())  # 记录按键时间
+                self.key_today_total += 1  # 按键总次数增加
         else:
-            key_add = key
+            key_add = key  # 非虚拟键
         if key_add not in self.pressed_keys:
             self.pressed_keys.add(key_add)
             self._update_config_ctrl_l_only()
@@ -113,6 +149,50 @@ class KeyMonitor:
             self.is_running = False
             self.listener.stop()  # 停止监听
             self.listener = None
+
+    def connect_tray_msg_controller(self, widget: QWidget, tray_msg_controller: 'TrayMsgController'):
+        """连接托盘消息"""
+        self.tray_msg_controller = tray_msg_controller
+
+        self.key_speed_timer = QTimer(widget)  # 按键速度定时器
+        self.key_speed_timer.timeout.connect(self._check_key_speed)  # 按键速度定时器超时调用
+
+        self.total_update_config_timer = QTimer(widget)  # 按键总次数更新定时器
+        self.total_update_config_timer.timeout.connect(self._check_total_update_config)  # 按键总次数更新定时器超时调用
+
+        self._on_key_info_enabled_changed(None, config.tray_key_info_enabled)  # 初始化 配置
+
+    def _check_key_speed(self):
+        """检查按键速度"""
+        if self.tray_msg_controller:
+            # 获取当前时间：
+            current_time = time.time()  # 当前时间
+            # 删除队列中一分钟前的数据
+            while not self.key_queue.empty() and current_time - self.key_queue.queue[0] > 60:
+                self.key_queue.get()
+            key_speed = self.key_queue.qsize()
+            if key_speed != self.last_key_speed:
+                # 计算按键速度（按键数 / 时间间隔）
+                if key_speed > 0:
+                    self.tray_msg_controller.set_default_tray_msg(tray_msg=get_key_speed_tray_msg(key_speed, self.key_today_total))
+                else:
+                    self.tray_msg_controller.set_default_tray_msg(tray_msg=TragMsgs.Default.DEFAULT.value)
+                self.last_key_speed = key_speed  # 更新最后记录的按键速度
+
+    def _check_total_update_config(self):
+        """检查按键总次数更新配置"""
+        if config.tray_key_info_enabled:
+            cur_date = time.strftime("%Y-%m-%d", time.localtime())
+            if config.tray_key_today_date != cur_date:  # 日期改变，重置按键总次数
+                config.tray_key_today_date = cur_date
+                config.tray_key_today_total = 0
+                self.key_today_total = 0  # 重置按键总次数, 因为是新的一天
+                # print(f"日期改变，重置按键总次数: {config.tray_key_today_total} -> {self.key_today_total}")
+            elif config.tray_key_today_total != self.key_today_total:  # 相同日期的情况，更新按键总次数
+                if self.key_today_total > config.tray_key_today_total:
+                    config.tray_key_today_total = self.key_today_total
+                else:
+                    self.key_today_total = config.tray_key_today_total
 
 
 # 使用示例

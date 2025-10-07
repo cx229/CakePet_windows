@@ -74,8 +74,7 @@ class SizeGrowingController(ModuleController):
         self.change_timer.stop()  # 关闭改变时间
         self._wait_start()  # 开启等待时间，等待下一次放大
         # 退出放大通知
-        if self.widget.tray_msg_controller.trag_msg.key == TragMsgs.Event.REST.value.key:
-            self.widget.tray_msg_controller.change_text_discontinuous(force=True)
+        self.widget.tray_msg_controller.close_text(TragMsgs.Event.REST.value.key)
 
     def _bigger_change(self):
         self._update_size()

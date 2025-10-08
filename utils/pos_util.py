@@ -4,7 +4,7 @@ from configs import config
 
 
 def point_to_tuple(pos: QPoint) -> tuple:
-    return pos.x(), pos.y()
+    return round(pos.x()), round(pos.y())
 
 
 def pointf_to_tuple(pos_f: QPointF) -> tuple:

@@ -62,9 +62,11 @@ class ImagesMode(TimerNextChange):
         config.gravity_enable = self.gravity_enable
         self.image_series_timer.stop()
 
-    def update_image_series(self, index: int = None):
+    def update_image_series(self, index: int = None,same_return=False):
         if index is None:
             index = self.index
+        if same_return and index == self.index:
+            return
         if index is None:  # 没有下一张图片，切换到下一个模式
             self.change_mode()
         elif index in self.confs:

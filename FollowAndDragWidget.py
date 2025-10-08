@@ -1,10 +1,11 @@
 import traceback
 from typing import Optional
 
-from PyQt5.QtWidgets import (QLabel, QWidget)
+from PyQt5.QtWidgets import (QLabel, QWidget, QApplication)
 from PyQt5.QtCore import Qt, QPoint, QRect, QPointF
 from PyQt5.QtGui import QPixmap, QTransform, QCursor
 
+import image_modes.image_modes
 from module_controllers.ClickThroughController import ClickThroughController
 from module_controllers.TrayMsgController import TrayMsgController
 from monitors.KeyMonitor import KeyMonitor
@@ -125,7 +126,7 @@ class FollowAndDragWidget(QWidget):
         # print(f"offset:{offset},offset*2.526:{offset*2.526}")
         origin_offset = offset * cur_size_r
         new_offset = self.screen_monitor.adjust_offset_screen(origin_offset, config.anchor_pos) \
-            if (config.is_drag_follow or config.is_throw_follow or  not config.mouse_follow_enabled) else origin_offset
+            if (config.is_drag_follow or config.is_throw_follow or not config.mouse_follow_enabled) else origin_offset
         # print(f"new_offset4: {new_offset},origin_offset: {origin_offset}")
 
         config.anchor_pos += new_offset
@@ -138,7 +139,7 @@ class FollowAndDragWidget(QWidget):
     def img_move_by_offset(self, offset: QPoint):
         """根据偏移量移动图片,同时更新锚点坐标"""
         new_offset = self.screen_monitor.adjust_offset_screen(offset, config.anchor_pos) \
-            if (config.is_drag_follow or config.is_throw_follow or  not config.mouse_follow_enabled) else offset
+            if (config.is_drag_follow or config.is_throw_follow or not config.mouse_follow_enabled) else offset
         self.image_label.move(self.image_label.pos() + new_offset)
         config.anchor_pos += new_offset
 
@@ -150,6 +151,22 @@ class FollowAndDragWidget(QWidget):
                 logger.info("用户右键点击窗口弹出菜单")
         except Exception as e:
             logger.error(f"显示右键菜单错误: {traceback.format_exc()}")
+
+    def recall_pet(self):
+        """召回宠物"""
+        # 设定锚点位置屏幕居中，抛掷速度归零
+        logger.info("召回宠物")
+
+        screen = QApplication.desktop().screenGeometry()
+        new_anchor = QPoint(screen.width() // 2, screen.height() // 2)
+        cur_work = self.screen_monitor.get_cur_screen_work(new_anchor)
+        new_anchor.setY(cur_work.bottom())
+        offset = new_anchor - config.anchor_pos
+        config.throw_follow_speed = QPointF(0, 0)
+        self.img_move_by_offset(offset)
+        self.mode_manager.set_mode(image_modes.image_modes.ThrowFallStandFollowMode.get_name())
+
+
 
     def closeEvent(self, event):
         """处理关闭事件，清理资源"""

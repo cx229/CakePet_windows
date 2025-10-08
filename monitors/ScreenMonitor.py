@@ -169,20 +169,20 @@ class ScreenMonitor(QObject, QAbstractNativeEventFilter):
 
     def adjust_offset_screen_connect(self, offset: QPoint, cur_anchor_pos: QPoint, portal_enabled: bool = True):
         """调整偏移量，实现循环屏幕效果"""
-        new_offset = QPoint(offset.x(), offset.y())
+        new_offset = QPoint(offset)
         combined_width = self.combined_rect.width()
         new_x = cur_anchor_pos.x() + new_offset.x()
         new_y = cur_anchor_pos.y() + new_offset.y()
 
         adjust_new_x = int(self.cal_x_connect_f(new_x))
-        if portal_enabled:
+        if portal_enabled and 0 <= new_y < self.combined_rect.height():
             if adjust_new_x < new_x:  # 右边消失，左边出现
                 handle_portal(QPoint(0, new_y), self._parent_widget, turn_right=False, exit_flag=True)  # 出口传送门
                 handle_portal(QPoint(combined_width - 1, new_y), self._parent_widget, turn_right=True, exit_flag=False)  # 入口传送门
             elif adjust_new_x > new_x:  # 左边消失，右边出现
                 handle_portal(QPoint(combined_width - 1, new_y), self._parent_widget, turn_right=True, exit_flag=True)  # 出口传送门
                 handle_portal(QPoint(0, new_y), self._parent_widget, turn_right=False, exit_flag=False)  # 入口传送门
-        new_offset = QPoint(adjust_new_x - cur_anchor_pos.x(), new_offset.y())
+        new_offset = QPointF(adjust_new_x - cur_anchor_pos.x(), new_offset.y()).toPoint() # 防止水平溢出报错
         return new_offset
 
     def get_cur_work_by_xy_f(self, pos_f: QPointF) -> Optional[QRect]:

@@ -194,10 +194,10 @@ class DragFollowMode(ImagesMode):
         self.confs = {
             1: ImagesMode.ImageConf(Images.LiftUp.S1.value, 2, lambda: random.randint(340, 370)),
             2: ImagesMode.ImageConf(Images.LiftUp.S2.value, 1, lambda: random.randint(340, 370)),
-            3: ImagesMode.ImageConf(Images.LiftUp.S3.value, 1, 100),
-            4: ImagesMode.ImageConf(Images.LiftUp.S4.value, 2, 100),
-            5: ImagesMode.ImageConf(Images.LiftUp.S5.value, 3, 100),
-            6: ImagesMode.ImageConf(Images.LiftUp.S6.value, 4, 100)
+            3: ImagesMode.ImageConf(Images.LiftUp.S3.value, 1, 200),
+            4: ImagesMode.ImageConf(Images.LiftUp.S4.value, 2, 200),
+            5: ImagesMode.ImageConf(Images.LiftUp.S5.value, 3, 300),
+            6: ImagesMode.ImageConf(Images.LiftUp.S6.value, 4, 300)
         }
 
         self.time_next_enabled = False  # 关闭定时切换
@@ -232,8 +232,19 @@ class ThrowFallStandFollowMode(ImagesMode):
             3: ImagesMode.ImageConf(Images.JumpDown.S3.value, None, lambda: random.randint(200, 250)),
         }
         self.time_next_enabled = False  # 关闭定时切换
-        self.next_mode_name = WalkMode.get_name()
+        # self.next_mode_name = WalkMode.get_name()
         # self.next_mode_name = LieMode.name # DEV
+
+    def change_mode(self):
+        if config.throw_follow_enabled:
+            self.next_mode_name = WalkMode.get_name()
+        else:
+            self.next_mode_name = LieMode.get_name()
+        super().change_mode()
+
+
+
+
 
 
 class MouseFollowMode(ImagesMode):

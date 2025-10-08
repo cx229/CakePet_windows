@@ -50,7 +50,7 @@ class ImageMeta:
     @property
     def anchor(self) -> QPoint:
         """获取锚点坐标（自动处理首次计算）"""
-        return QPoint(*self._calculate_anchor()) + QPoint(self.anchor_dx, self.anchor_dy)
+        return QPoint(*self._calculate_anchor()) + QPoint(self.anchor_dx, self.anchor_dy)  # 自定义偏移
 
     @property
     def size(self) -> QSize:

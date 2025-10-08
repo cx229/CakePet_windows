@@ -12,12 +12,12 @@ from utils.log_util import logger
 from utils.pos_util import point_to_tuple
 
 
-def create_setting_item(title, switch, description=None, status=None, has_border=True):
+def create_setting_item(title, switch, description=None, status=None, margin_left_add=0):
     """创建单个设置项"""
     item_widget = QWidget()
     item_widget.setProperty("class", "setting-item")
     item_layout = QHBoxLayout()
-    item_layout.setContentsMargins(25, 20, 25, 20)
+    item_layout.setContentsMargins(25+margin_left_add, 10, 25, 10)  # 左, 上, 右, 下
 
     # 左侧文字区域 - 使用QWidget作为容器，设置尺寸策略
     text_widget = QWidget()
@@ -63,12 +63,12 @@ def create_setting_item(title, switch, description=None, status=None, has_border
     return item_widget
 
 
-def create_settings_item(titles, switches):
+def create_settings_item(titles, switches, margin_left_add=0):
     """创建一个设置项：水平布局显示各个子设置项。共用一个描述文字"""
     item_widget = QWidget()
     item_widget.setProperty("class", "setting-item")
     item_layout = QHBoxLayout()
-    item_layout.setContentsMargins(25, 20, 25, 20)
+    item_layout.setContentsMargins(25+margin_left_add, 10, 25, 10)  # 左, 上, 右, 下
 
     # 添加所有子设置项，水平排列
     for title, switch in zip(titles, switches):
@@ -89,12 +89,12 @@ def create_settings_item(titles, switches):
     return item_widget
 
 
-def create_slider_item(title, slider, value_label, description=None, has_border=True):
+def create_slider_item(title, slider, value_label, description=None, margin_left_add=0):
     """创建滑块设置项"""
     item_widget = QWidget()
     item_widget.setProperty("class", "setting-item")
     item_layout = QVBoxLayout()
-    item_layout.setContentsMargins(25, 20, 25, 20)
+    item_layout.setContentsMargins(25+margin_left_add, 10, 25, 10)  # 左, 上, 右, 下
     item_layout.setSpacing(2)
 
     # 顶部标题行 - 使用水平布局
@@ -129,6 +129,7 @@ def create_slider_item(title, slider, value_label, description=None, has_border=
     # 滑块 - 设置尺寸策略
     slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     slider.setMinimumHeight(35)
+    slider.wheelEvent = lambda event: None # 禁用鼠标滚轮事件
     item_layout.addWidget(slider)
 
     item_widget.setLayout(item_layout)
@@ -143,11 +144,11 @@ def create_group_title(title):
     return title_label
 
 
-def create_item_container(check_widget: QCheckBox, widgets: list[QWidget]):
+def create_item_container(check_widget: QCheckBox, widgets: list[QWidget], margin_left_add=0):
     """创建带动画效果的设置项容器（修复默认true时的问题）"""
     container = QWidget()
     container_layout = QVBoxLayout()
-    container_layout.setContentsMargins(0, 0, 0, 0)
+    container_layout.setContentsMargins(margin_left_add, 0, 0, 0)
     container_layout.setSpacing(0)
     container.setLayout(container_layout)
 

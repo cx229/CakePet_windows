@@ -95,7 +95,8 @@ class GlobalConfig(BaseObservable):
     anchor_pos = QPoint(500, 500)  # 锚点坐标
 
     """ 跟随模式配置 """
-    follow_update_interval = 3  # 跟随更新间隔（毫秒），不论什么模式，指的是定时器间隔
+    follow_update_interval = None  # 跟随更新间隔（毫秒），不论什么模式，指的是定时器间隔
+    throw_follow_max_speed_ms:int  = None  # 最大抛掷速度，单位: 像素/ms
 
     drag_follow_enabled: bool = None  # 是否开启拖动功能
     is_drag_follow = False  # 是否正在拖动
@@ -107,10 +108,11 @@ class GlobalConfig(BaseObservable):
     throw_follow_rebound_left_right_enabled: bool = None  # 是否开启反弹-左右 功能
     throw_follow_rebound_ratio: float = None  # 反弹系数
     is_throw_follow = False  # 是否正在下落
-    gravity_enable: bool = True  # 是否开启重力功能
-    throw_follow_acceleration = QPointF(0, 0.02)  # 抛掷重力速度, 单位: 像素/s2
-    throw_follow_radio = QPointF(1, 0.8)  # 抛掷的初速度与重力速度的比例
-    throw_follow_speed = QPointF(0, 0)  # 抛掷速度，单位: 像素/s
+    gravity_enable: bool = True  # 是否开启重力功能 处理一些临时关闭重力的情况
+    # throw_follow_acceleration = QPointF(0, 0.01)  # 抛掷重力速度, 单位: 像素/s2
+    throw_follow_gravity = None  # 抛掷重力速度 ms
+    # throw_follow_radio = QPointF(1, 0.8)  # 抛掷的初速度与鼠标速度的比例
+    throw_follow_speed = QPointF(0, 0)  # 抛掷速度(每次刷新时）
 
     mouse_follow_enabled: bool = None  # 是否开启跟随鼠标
     is_mouse_follow = False  # 是否正在跟随鼠标
@@ -143,7 +145,10 @@ default_config = {
     "click_through_enabled": False,  # 是否开启点击穿透功能，默认关闭
     "screen_connect_enabled": True,  # 是否开启屏幕连接功能，默认开启
     "drag_follow_enabled": True,  # 是否开启拖动功能，默认开启
+    "follow_update_interval": 3,  # 跟随更新间隔（毫秒），不论什么模式，指的是定时器间隔
+    "throw_follow_max_speed_ms": 10,  # 最大抛掷速度，单位: 像素/ms
     "throw_follow_enabled": True,  # 是否开启抛掷功能，默认开启
+    "throw_follow_gravity": 0.01,  # 抛掷重力速度 ms
     "throw_follow_rebound_enabled": True,  # 是否开启反弹功能，默认开启
     "throw_follow_rebound_up_enabled": True,  # 是否开启反弹-上 功能, 默认开启
     "throw_follow_rebound_down_enabled": True,  # 是否开启反弹-下 功能, 默认开启

@@ -4,44 +4,100 @@ import traceback
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QLabel, QWidget,
                              QDialog, QVBoxLayout, QSlider,
-                             QCheckBox, QTabWidget, QScrollArea, )
-from PyQt5.QtCore import Qt, QTimer
+                             QCheckBox, QTabWidget, QScrollArea, QApplication, )
+from PyQt5.QtCore import Qt, QTimer, QPointF
 
 from configs import config
 from settings.TabWidget import TabWidget
 from settings.create_setting_widgets import create_item_container, create_slider_item, create_group_title, create_setting_item, create_settings_item
 from settings.settings_styles import settings_set_style, settings_tab_style
 from utils.log_util import logger
-from utils.pos_util import point_to_tuple
+from utils.pos_util import point_to_tuple, pointf_to_tuple
 
 
 class SettingsDialog(QDialog):
     """设置对话框：设置页 + 实时信息监控页"""
+    _instance = None  # 单例实例
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setModal(False)  # 关键设置：改为非模态对话框
-        self.parent = parent
-        # self.hide()
-        # self.setAttribute(Qt.WA_ShowWithoutActivating)  # 1. 防止激活闪烁
-        # self.setWindowFlags(self.windowFlags() | Qt.WindowDoesNotAcceptFocus)  # 2. 避免焦点变化
-        self._init_ui()
+    def __new__(cls, parent):
+        """单例模式的核心实现"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self, parent):
+        if not hasattr(self, '_initialized') or not self._initialized:
+            super().__init__(None)
+            self.setModal(False)  # 改为非模态对话框
+            self.parent = parent
+
+            self._init_ui()
+            self._initialized = True  # 标记为已初始化
+
+        # 信息页更新定时器
+        self.info_timer = QTimer(self)
+        self.info_timer.timeout.connect(self.update_info_page)
+        self.info_timer.start(200)  # 每500ms更新一次信息页
+
+        # 确保窗口关闭时清理资源
+        # self.destroyed.connect(self._cleanup)  # 绑定清理函数
+
+    # def _cleanup(self):
+    #     """窗口关闭时清理资源"""
+    #     if hasattr(self, 'info_timer'):
+    #         self.info_timer.stop()  # 停止定时器
+    #         self.info_timer.deleteLater()  # 安全删除定时器
+    #     print("SettingsDialog 窗口关闭时清理资源完成")
+    #
+    # def closeEvent(self, event):
+    #     """重写 closeEvent，确保关闭时执行清理"""
+    #     self._cleanup()
+    #     super().closeEvent(event)  # 调用父类方法，确保正常关闭
+
+    def move_center(self):
+        """窗口显示时移动到屏幕中央"""
+        screen = QApplication.desktop().screenGeometry()
+        self.move(
+            (screen.width() - self.width()) // 2,
+            (screen.height() - self.height()) // 2
+        )
+
+    @classmethod
+    def show_or_focus(cls, parent):
+        """显示或激活现有窗口"""
+        if cls._instance is None:
+            cls._instance = cls(parent)
+        cls._instance.move_center()
+        # print(hasattr(parent,'image_label'))
+        # cls._instance.setZValue(5)
+        cls._instance.show()
+        cls._instance.activateWindow()
+
+        # if hasattr(parent,'image_label'):
+        #     cls._instance.stackUnder(parent.image_label)
+        # cls._instance.raise_()
+
+    def _init_ui(self):
+        """初始化UI界面"""
+        self.setWindowFlags(
+            self.windowFlags() |
+            Qt.Window |  # 作为独立窗口
+            Qt.WindowTitleHint |  # 显示标题栏
+            Qt.WindowSystemMenuHint |  # 显示系统菜单
+            Qt.WindowMinMaxButtonsHint  # 显示最小化/最大化按钮（可选）
+        )
 
         # 设置窗口图标
         icon_path = "img/icon.png"
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
-        # 信息页更新定时器
-        self.info_timer = QTimer(self)
-        self.info_timer.timeout.connect(self.update_info_page)
-        self.info_timer.start(100)  # 每100ms更新一次信息页
-
-    def _init_ui(self):
-        """初始化UI界面"""
-        self.setWindowTitle("小小芝麻酥 - 设置")
+        self.setWindowTitle("设置 - 小小芝麻酥")
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
-        self.setFixedSize(1200, 1200)
+        self.setMinimumSize(900, 800)  # 设置最小尺寸（防止窗口过小）
+        self.resize(1200, 1200)  # 设置初始默认大小（可选）
+
         main_layout = QVBoxLayout()
         # 替换原来的 tab_widget
         self.tab_widget = TabWidget()
@@ -97,10 +153,31 @@ class SettingsDialog(QDialog):
         self.click_through_check.setChecked(config.click_through_enabled)
         self.click_through_check.stateChanged.connect(self._on_click_through_changed)
 
+        # 运动速度滑块
+        self.follow_update_interval_label = QLabel(f"{config.follow_update_interval}ms")
+        self.follow_update_interval_slider = QSlider(Qt.Horizontal, self)
+        self.follow_update_interval_slider.setRange(1, 50)
+        self.follow_update_interval_slider.setValue(config.follow_update_interval)
+        self.follow_update_interval_slider.valueChanged.connect(self._on_follow_update_interval_changed)
+
         # 抛掷功能开关
         self.throw_follow_check = QCheckBox(self)
         self.throw_follow_check.setChecked(config.throw_follow_enabled)
         self.throw_follow_check.stateChanged.connect(self._on_throw_follow_changed)
+
+        # 重力加速度滑块
+        self.throw_follow_gravity_label = QLabel(f"{int(config.throw_follow_gravity * 1000000):,}px/s²")
+        self.throw_follow_gravity_slider = QSlider(Qt.Horizontal, self)
+        self.throw_follow_gravity_slider.setRange(0, 50)
+        self.throw_follow_gravity_slider.setValue(int(config.throw_follow_gravity * 1000))
+        self.throw_follow_gravity_slider.valueChanged.connect(self._on_throw_follow_gravity_changed)
+
+        # 抛掷最大速度滑块
+        self.throw_follow_max_speed_label = QLabel(f"{config.throw_follow_max_speed_ms * 1000:,}px/s")
+        self.throw_follow_max_speed_ms_slider = QSlider(Qt.Horizontal, self)
+        self.throw_follow_max_speed_ms_slider.setRange(1, 50)
+        self.throw_follow_max_speed_ms_slider.setValue(int(config.throw_follow_max_speed_ms))
+        self.throw_follow_max_speed_ms_slider.valueChanged.connect(self._on_throw_follow_max_speed_ms_changed)
 
         # 反弹抛掷功能开关
         self.throw_rebounce_check = QCheckBox(self)
@@ -184,7 +261,7 @@ class SettingsDialog(QDialog):
         self.tray_msg_margin_label = QLabel(f"{config.tray_msg_margin}")
         self.tray_msg_margin_slider = QSlider(Qt.Horizontal, self)
         self.tray_msg_margin_slider.setRange(0, 300)
-        self.tray_msg_margin_slider.setValue(int(config.tray_msg_margin/10))
+        self.tray_msg_margin_slider.setValue(int(config.tray_msg_margin / 10))
         self.tray_msg_margin_slider.valueChanged.connect(self._on_tray_msg_margin_changed)
 
         # 仅记录错误日志开关
@@ -201,25 +278,33 @@ class SettingsDialog(QDialog):
         layout.addWidget(create_setting_item("点击穿透", self.click_through_check,
                                              "鼠标就点不到我了，除非，仅按下左Ctrl键"))
 
-        layout.addWidget(create_group_title("拖动抛掷"))
+        layout.addWidget(create_group_title("运动功能"))
+        layout.addWidget(create_slider_item("刷新速度", self.follow_update_interval_slider, self.follow_update_interval_label,
+                                            "运动状态下画面刷新速度，数值越小，画面越流畅（默认3ms）"))
         layout.addWidget(create_setting_item("单击拖动", self.drag_follow_check,
                                              "鼠标左键长按可以拖动,移来移去....."))
         layout.addWidget(create_setting_item("重力抛掷", self.throw_follow_check,
-                                             "拖动结束时，会被丢出去（关闭后，将不会上下移动，也不会左右跑动）\n注意：要是走丢了，也就不能传送到地面了..."))
-
+                                             "拖动结束时，会被丢出去（关闭后，将不会上下移动，也不会左右跑动）\n"
+                                             "注意：如果关闭，要是走丢了，也就不能传送到地面了..."))
+        layout.addWidget(create_item_container(check_widget=self.throw_follow_check, widgets=[
+            create_slider_item("重力加速度", self.throw_follow_gravity_slider, self.throw_follow_gravity_label,
+                               "数值越大，下落加速越快（默认10,000px/s²）"),
+            create_slider_item("最大速度", self.throw_follow_max_speed_ms_slider, self.throw_follow_max_speed_label,
+                               "抛掷时的最大速度，禁止超速！（默认10,000px/s）")
+        ],margin_left_add=50))
         layout.addWidget(create_setting_item("重力抛掷-反弹模式", self.throw_rebounce_check,
                                              "重力抛掷开启时，碰到屏幕边缘时会反弹（关闭后，可以飞向太空）\n"
-                                             "多屏幕下，即使关闭左右反弹，但目的地不存在时，还是会反弹的哦"))
+                                             "多屏幕下，即使关闭左右反弹，但目的地不存在时，还是会反弹的哦",
+                                             margin_left_add=50))
         layout.addWidget(create_item_container(check_widget=self.throw_rebounce_check, widgets=[
             create_settings_item(["上反弹", "下反弹", "左右反弹"],
-                                 [self.throw_rebounce_up_check, self.throw_rebounce_down_check, self.throw_rebounce_left_right_check]),
+                                 [self.throw_rebounce_up_check, self.throw_rebounce_down_check, self.throw_rebounce_left_right_check], ),
             create_slider_item("反弹因数", self.throw_follow_rebound_ratio_slider,
                                self.throw_follow_rebound_ratio_label,
                                "反弹因数越大，损失的能量越小（默认0.80）\n"
-                               "如果大于1.0，那么每次反弹就会加速！禁止超速！", False)
-        ]))
+                               "如果大于1.0，那么每次反弹就会加速！")
+        ], margin_left_add=100))
 
-        layout.addWidget(create_group_title("鼠标跟随"))
         layout.addWidget(create_setting_item("鼠标跟随", self.mouse_follow_check,
                                              "非拖动和抛掷时，跟随移动到鼠标右下角（按住左Ctrl键时，会停止跟随）"))
 
@@ -227,7 +312,7 @@ class SettingsDialog(QDialog):
             create_slider_item("跟随速度", self.mouse_follow_speed_slider,
                                self.mouse_follow_speed_label,
                                "值越大，跟随鼠标越快（默认5.0）", False)
-        ]))
+        ], margin_left_add=50))
 
         layout.addWidget(create_group_title("休息提醒"))
         layout.addWidget(create_setting_item("休息提醒", self.bigger_check,
@@ -238,7 +323,7 @@ class SettingsDialog(QDialog):
             create_slider_item("变大比例", self.bigger_max_ratio_slider,
                                self.bigger_max_size_ratio_label,
                                "变大的最大倍数（默认10.0）\n注意，如果 基数 × 倍数 > 15, 可能大量消耗系统资源", False)
-        ]))
+        ], margin_left_add=50))
 
         layout.addWidget(create_group_title("托盘消息"))
         layout.addWidget(create_setting_item("托盘消息", self.tray_msg_check,
@@ -254,7 +339,7 @@ class SettingsDialog(QDialog):
             create_slider_item("边距", self.tray_msg_margin_slider,
                                self.tray_msg_margin_label,
                                "托盘消息与任务栏的边距（默认0）", False)
-        ]))
+        ], margin_left_add=50))
         layout.addWidget(create_group_title("其他"))
         layout.addWidget(create_setting_item("仅记录错误日志", self.logger_only_error_check,
                                              "仅记录错误日志，而不是所有日志"))
@@ -303,6 +388,10 @@ class SettingsDialog(QDialog):
         self.img_anchor_label = QLabel("图片锚点位置: --", self)
         layout.addWidget(self.img_anchor_label)
 
+        # 抛掷速度
+        self.throw_speed_label = QLabel("抛掷速度: --", self)
+        layout.addWidget(self.throw_speed_label)
+
         # 图片缩放比例
         self.img_size_ratio_label = QLabel("图片缩放比例(base,ratio): --", self)
         layout.addWidget(self.img_size_ratio_label)
@@ -327,8 +416,8 @@ class SettingsDialog(QDialog):
 
         text = """
         关于本项目
-        版本: 25100720
-        作者: cx
+        版本: 25100824
+        作者: 初心cx
         感谢，部分素材图片来源: 芝麻球促销（作者，半江离）
         感谢，部分桌宠模式项目: Shimeji（作者，Kilkakon）"""
         layout.addWidget(QLabel(text, self))
@@ -338,13 +427,11 @@ class SettingsDialog(QDialog):
 
     def update_info_page(self):
         """专门用于更新信息页的实时数据"""
+        # print(f"self.isVisible={self.isVisible()},self.tab_widget.currentIndex()={self.tab_widget.currentIndex()}")
+
         if not self.isVisible() or self.tab_widget.currentIndex() != 1:  # 仅当信息页激活时更新
             return
         try:
-            # # 只在信息页激活时更新（可选优化）
-            # if self.tab_widget.currentWidget() != self.info_tab:
-            #     return
-
             if self.parent:
                 self.widget_rect_label.setText(
                     f"@窗口位置尺寸: {self.parent.geometry().getRect()}"
@@ -371,6 +458,12 @@ class SettingsDialog(QDialog):
                     self.img_rect_label.setText(
                         f"图片位置尺寸: {self.parent.get_img_rect().getRect()}"
                     )
+
+                    # 抛掷速度
+                    throw_follow_speed:QPointF =config.throw_follow_speed*1000
+                    self.throw_speed_label.setText(
+                        f"抛掷速度: ({throw_follow_speed.x(): >11,.2f}, {throw_follow_speed.y(): >11,.2f})"
+                    )
                     bigger_time = self.parent.size_growing_controller.get_wait_elapsed_time()  # 毫秒
                     self.bigger_wait_label.setText(
                         f"变大等待时间: {int(bigger_time / (1000))}秒/{int(config.bigger_wait_time / (1000))}秒，"
@@ -382,7 +475,7 @@ class SettingsDialog(QDialog):
                     )
 
             self.img_anchor_label.setText(
-                f"图片锚点位置: {point_to_tuple(config.anchor_pos)}"
+                f"图片锚点位置(px): {point_to_tuple(config.anchor_pos)}"
             )
             self.img_size_ratio_label.setText(
                 f"图片缩放比例(base,ratio): ({config.size_ratio_base:.1f}, {config.size_ratio:.1f})"
@@ -401,10 +494,28 @@ class SettingsDialog(QDialog):
         config.drag_follow_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'} 单击拖动 功能")
 
+    def _on_follow_update_interval_changed(self, value):
+        """处理运动速度设置变化"""
+        config.follow_update_interval = value
+        self.follow_update_interval_label.setText(f"{value}ms")
+        logger.info(f"设置，用户设置运动速度为: {value}ms")
+
     def _on_throw_follow_changed(self, state):
         """处理抛出跟随功能切换"""
         config.throw_follow_enabled = bool(state)
         logger.info(f"设置，用户{'开启' if state else '关闭'} 重力抛掷 功能")
+
+    def _on_throw_follow_gravity_changed(self, value):
+        """处理重力加速度设置变化"""
+        config.throw_follow_gravity = value / 1000
+        self.throw_follow_gravity_label.setText(f"{int(config.throw_follow_gravity * 1000000):,}px/s²")
+        logger.info(f"设置，用户设置重力加速度为: {int(config.throw_follow_gravity * 1000000):,}px/s²")
+
+    def _on_throw_follow_max_speed_ms_changed(self, value):
+        """处理抛掷最大速度设置变化"""
+        config.throw_follow_max_speed_ms = value
+        self.throw_follow_max_speed_label.setText(f"{config.throw_follow_max_speed_ms *1000:,}px/s")
+        logger.info(f"设置，用户设置抛掷最大速度为: {config.throw_follow_max_speed_ms * 1000:,}px/s")
 
     def _on_throw_rebounce_changed(self, state):
         """处理反弹抛掷功能切换"""

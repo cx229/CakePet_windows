@@ -54,7 +54,7 @@ class SizeGrowingController(ModuleController):
 
     def _wait_start(self):
         self._re_size()
-        if not config.bigger_enabled:  # 关闭放大，不处理
+        if not config.bigger_enabled:  # 关闭放大功能，不处理
             return
         self.wait_start_time = time.time()  # 记录当前时间戳
         self.wait_timer.start(config.bigger_wait_time)  # 重新开始等待时间
@@ -80,12 +80,14 @@ class SizeGrowingController(ModuleController):
         self._update_size()
 
     def _handle_bigger_enable_value(self, sender, value):
-        if not value:  # 关闭放大
+        if not value:  # 关闭放大 功能
             self.wait_timer.stop()  # 关闭等待时间
             self.change_timer.stop()  # 关闭改变时间
             self._set_img_size_ratio(1)  # 恢复标准大小比例
             if config.bigger_flag:  # 如果正在放大，
                 config.bigger_flag = False  # 关闭放大标志，触发处理
+        else:  # 开启放大
+            self._wait_start()
 
     def _handle_bigger_flag_value(self, sender, value):
         """ 放大标志改变，开启放大或结束放大 """

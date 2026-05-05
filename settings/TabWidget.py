@@ -9,6 +9,16 @@ class TabWidget(QWidget):
         super().__init__()
         self.initUI()
 
+    def start(self):
+        cur_widget = self.content_area.currentWidget()
+        if cur_widget:
+            cur_widget.start()
+
+    def stop(self):
+        cur_widget = self.content_area.currentWidget()
+        if cur_widget:
+            cur_widget.stop()
+
     def initUI(self):
         # 主布局 - 水平布局（左侧选项卡 + 右侧内容）
         main_layout = QHBoxLayout()
@@ -24,7 +34,7 @@ class TabWidget(QWidget):
         self.content_area = QStackedWidget()
 
         # 连接选项卡点击事件
-        self.tab_bar.currentRowChanged.connect(self.content_area.setCurrentIndex)
+        self.tab_bar.currentRowChanged.connect(self.changeIndex)
 
         # 添加到主布局
         main_layout.addWidget(self.tab_bar)
@@ -39,6 +49,18 @@ class TabWidget(QWidget):
         """添加新选项卡"""
         self.tab_bar.addItem(name)
         self.content_area.addWidget(widget)
+
+    def changeIndex(self,index):
+        if index == self.content_area.currentIndex():
+            return
+        cur_widget=self.content_area.currentWidget()
+        if cur_widget:
+            cur_widget.stop()
+        self.content_area.setCurrentIndex(index)
+        new_widget=self.content_area.currentWidget()
+        if new_widget:
+            new_widget.start()
+
 
     def currentIndex(self):
         """获取当前选中的选项卡索引"""

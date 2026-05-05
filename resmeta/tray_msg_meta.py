@@ -38,15 +38,24 @@ class TragMsgs:
         OHU1 = TrayMsgMeta(key="meow_ohu1", text="哦呜~ 哦呜~", random_ms=2000)
         OHU2 = TrayMsgMeta(key="meow_ohu2", text="哦呜~", random_ms=2000)
         PURR = TrayMsgMeta(key="meow_purr", text="咕噜咕咕噜...", random_ms=2000)
-        WANG = TrayMsgMeta(key="meow_wang", text="汪 汪汪 汪汪汪", base_ms=1000, random_ms=2000)
+        WANG = TrayMsgMeta(key="meow_wang", text="汪 汪汪 汪汪汪", base_ms=500, random_ms=500)
 
     # 思考类消息
     class Thinking(Enum):
-        PHILOSOPHY1 = TrayMsgMeta(key="think_philosophy1", text="你盯着屏幕，而我盯着你，谁又在盯着我们呢？", base_ms=100, random_ms=2000)
-        PHILOSOPHY2 = TrayMsgMeta(key="think_philosophy2", text="存在大于本质，但小鱼干先大于一切", base_ms=100, random_ms=2000)
-        PHILOSOPHY3 = TrayMsgMeta(key="think_philosophy3", text="我是谁？我从哪里来？要到哪里去？", base_ms=100, random_ms=2000)
+        PHILOSOPHY1 = TrayMsgMeta(key="think_philosophy1", text="你盯着屏幕，而我盯着你，谁又在盯着我们呢？", base_ms=500, random_ms=500)
+        PHILOSOPHY2 = TrayMsgMeta(key="think_philosophy2", text="存在大于本质，但小鱼干先大于一切", base_ms=500, random_ms=500)
+        PHILOSOPHY3 = TrayMsgMeta(key="think_philosophy3", text="我是谁？我从哪里来？要到哪里去？", base_ms=500, random_ms=500)
         PHILOSOPHY4 = TrayMsgMeta(key="think_philosophy4", text="喵生三大事：吃饭，睡觉", random_ms=2000)
-        PHILOSOPHY5 = TrayMsgMeta(key="think_philosophy5", text="如果桌面是无限的，它的尽头在哪里？", base_ms=500, random_ms=2000)
+        PHILOSOPHY5 = TrayMsgMeta(key="think_philosophy5", text="如果桌面是无限的，它的尽头在哪里？", base_ms=500, random_ms=500)
+        PHILOSOPHY6 = TrayMsgMeta(key="think_philosophy6", text="今天想通了一个道理，有些道理是想不通的", base_ms=500, random_ms=500)
+        PHILOSOPHY7 = TrayMsgMeta(key="think_philosophy7", text="今天想通了一个道理，有些道理是想不通的", base_ms=500, random_ms=500)
+
+    class CollectionWord(Enum):
+        COLLECTION_WORD1 = TrayMsgMeta(key="collection_word1", text="小〇〇〇〇", base_ms=2000, random_ms=2000)
+        COLLECTION_WORD2 = TrayMsgMeta(key="collection_word2", text="〇小〇〇〇", base_ms=1000, random_ms=1000)
+        COLLECTION_WORD3 = TrayMsgMeta(key="collection_word3", text="〇〇芝〇〇", base_ms=500, random_ms=500)
+        COLLECTION_WORD4 = TrayMsgMeta(key="collection_word4", text="〇〇〇麻〇", base_ms=250, random_ms=250)
+        COLLECTION_WORD5 = TrayMsgMeta(key="collection_word5", text="〇〇〇〇酥", base_ms=100, random_ms=100)
 
     class Event(Enum):
         REST = TrayMsgMeta(key="event_rest", text="休息时间到...", base_ms=0, priority=8)  # 优先级较高
@@ -61,7 +70,7 @@ class TragMsgs:
 
 
 # 待机托盘消息类，包含喵类、思考类消息
-tray_msgs_cls_standby = [*TragMsgs.Meow, *TragMsgs.Thinking]
+tray_msgs_cls_standby = [*TragMsgs.Meow, *TragMsgs.Thinking,*TragMsgs.CollectionWord]
 
 
 def get_standby_tray_msg() -> TrayMsgMeta:
